@@ -67,7 +67,7 @@ a1 = axes('Units','centimeters','Position',[left, y(1), boxW, boxH]); hold(a1, '
 hR1 = plot(a1, phi, 20*log10(abs(xr)), '--', 'Linewidth', lwRec, 'color', cR);
 hT1 = plot(a1, phi, 20*log10(abs(xt)), 'Linewidth', lw, 'color', cT);
 ylabel(a1, '$|E|$ (dB)', 'Interpreter','latex');
-legend(a1, [hT1 hR1], {'Truth','Recovered'}, 'Location', 'best');
+lgP = legend(a1, [hT1 hR1], {'Truth','Recovered'});   % placed outside the plot area, top right
 a2 = axes('Units','centimeters','Position',[left, y(2), boxW, boxH]); hold(a2, 'on');
 plot(a2, phi, max(20*log10(abs(xr - xt)/pk), -100), 'Linewidth', lw, 'color', cE);
 ylabel(a2, '$|\mathrm{Error}|$ (dB)', 'Interpreter','latex');
@@ -80,6 +80,11 @@ plot(a4, phi, angle(exp(1i*(angle(xr) - angle(xt))))*180/pi, 'Linewidth', lw, 'c
 ylabel(a4, 'Error ($^\circ$)', 'Interpreter','latex');   % short: fits the shorter panels
 xlabel(a4, xlab, 'Interpreter','latex');
 for ax = [a1 a2 a3 a4], xlim(ax, xl); grid(ax, 'on'); box(ax, 'on'); end
+% legend outside the plot area at the upper right: narrow the panels to make room
+drawnow; lgP.Units = 'centimeters'; legGap = 0.25;
+boxW = W - left - right - lgP.Position(3) - legGap;
+for ax = [a1 a2 a3 a4], ax.Position(3) = boxW; end
+lgP.Position(1:2) = [left + boxW + legGap, y(1) + boxH - lgP.Position(4)];
 for ax = [a1 a2 a3], ax.XTickLabel = []; end
 for ax = [a1 a2 a4], more_yticks(ax); end            % 4-6 labels per panel
 if cpr_settings().figures.print, saveas(fig, outBase, 'pdf'); end
