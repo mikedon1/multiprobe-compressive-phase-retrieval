@@ -7,7 +7,7 @@ function S = cpr_settings(preset)
 %
 % 'paper' reproduces the paper (a full run takes days on a laptop: the circular architectures and
 % the near-field comparison dominate). 'quick' runs EVERY study on a smaller pattern with few
-% restarts and a few sweep points, in minutes to about an hour. Its numbers will NOT match the
+% restarts and a few sweep points, in about 1.5 hours. Its numbers will NOT match the
 % paper; it is meant to check that the code runs and to give the trends quickly.
 % Other base parameters (P = 4 probes, K = 4 tones, sampling ratio, cable model, ...) are in
 % core/cpr_cfg.m.
@@ -62,6 +62,12 @@ S.fullwave.nitGAMP      = 200;    % GAMP iterations per EM update in Section VI 
 S.gampPath   = '';    % folder with GAMPmatlab (see cpr_setup.m); empty: $GAMPMATLAB or external/GAMPmatlab
 S.resultsDir = '';    % empty: <repository>/results
 S.threads    = 2;     % computational threads per MATLAB process
+
+% 7. FIGURES
+S.figures.print = true;   % false: only draw the figures in MATLAB (they stay open on screen);
+                          % true: also write each one as PDF and PNG to <results>/figs/paper
+S.figures.axes  = 'paper'; % 'paper': the axis limits and ticks used in the paper; 'auto': automatic limits and
+                          %   ticks taken from the data (the quick preset uses this, since its sweeps are shorter)
 % =============================================================================================
 
 if strcmp(active, 'quick')                          % ---- QUICK PRESET (overrides) ----
@@ -79,6 +85,7 @@ if strcmp(active, 'quick')                          % ---- QUICK PRESET (overrid
     S.sweeps.examples = struct('cs', [0.05 0.2], 'pr', [0.15 0.3]);
     S.sweeps.gaussRatio = [0.2 0.3];
     S.sweeps.calErr = struct('IS', [2 10], 'IC', 5);
+    S.figures.axes = 'auto';
     S.nearfield.twoScanStarts = 10;
     S.fullwave.nd = 8;  S.fullwave.nitGAMP = 200;
 elseif ~strcmp(active, 'paper')

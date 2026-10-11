@@ -3,5 +3,5 @@
 root = fileparts(mfilename('fullpath'));
 addpath(fullfile(root, 'matlab'), fullfile(root, 'matlab', 'core'));
 cpr_setup();
-fprintf('Ready. Preset: %s. Try  run_quick  or  run_study(''smoke'').\n', cpr_settings().preset);
+fprintf('Ready. Preset: %s. Try  run_all(''Preset'', ''quick'')  or  run_study(''smoke'').\n', cpr_settings().preset);
 clear root
