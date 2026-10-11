@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this code or data, please cite the paper and this software."
+title: "Multi-Probe Compressive Phase Retrieval: Simulation Code and Data"
+type: software
+authors:
+  - family-names: Don
+    given-names: Michael
+license: MIT
+repository-code: "https://github.com/mikedon1/multiprobe-compressive-phase-retrieval"
+abstract: >-
+  MATLAB code and data for the simulations in "Compressive Phase Retrieval for
+  Multi-Probe Antenna Measurement Systems" (M. Don and G. R. Arce): compressive
+  phase retrieval of antenna patterns from amplitude-only multi-probe measurements
+  with on/off switches, a comparison with the two-scan phaseless technique, and a
+  full-wave example with HFSS probe responses.
+keywords:
+  - compressive sensing
+  - phase retrieval
+  - antenna measurement
+  - multi-probe

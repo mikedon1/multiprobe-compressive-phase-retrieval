@@ -1,0 +1,6 @@
+results/
+results_quick/
+external/
+*.asv
+*.autosave
+*.pdf.bak
