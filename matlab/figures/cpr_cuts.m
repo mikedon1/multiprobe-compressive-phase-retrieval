@@ -31,9 +31,9 @@ for d = dir(fullfile(outDir, [study '_examples_w*.mat'])).'
     for e = S0.res(:).', if ~isempty(e.Xh), E{end+1} = e; end, end %#ok<AGROW>
 end
 nm = cellfun(@(e) e.(scoreF), E);
-[~, i1] = min(abs(nm - targets(1))); [~, i2] = min(abs(nm - targets(2))); E = E([i1 i2]);
+[~, i1] = min(abs(nm - targets(1))); [~, i2] = min(abs(nm - targets(2))); E = E(unique([i1 i2], 'stable'));   % one example in the quick preset: both targets pick the same run
 c = E{1}.cfg; [X, ~] = pattern_crlh(c.nw, c.nd, c.f0idx);
-for i = 1:2                                % remove one global phase over all wavelengths
+for i = 1:numel(E)                        % remove one global phase over all wavelengths
     Xh = E{i}.Xh; E{i}.Xh = Xh * exp(1i*angle(Xh(:)'*X(:))); E{i}.raw = E{i}.(scoreF);
 end
 US = X(:, :, k); nw = size(US, 1);
@@ -44,9 +44,9 @@ errdB   = @(a, b) max(20*log10(abs(a - b) / peakMag), -100);
 wrapdeg = @(a) angle(exp(1i*a)) * 180/pi;
 mn = char(8722);
 S = struct(); S.theta = theta_deg; S.thetaLim = [0 360-360/nw];
-S.nm = {sprintf('%s%.0f dB', mn, -E{1}.raw), sprintf('%s%.0f dB', mn, -E{2}.raw)};
+S.nm = arrayfun(@(i) sprintf('%s%.0f dB', mn, -E{i}.raw), 1:numel(E), 'UniformOutput', false);
 elT = US(:, slicep1);
-for i = 1:2, d = E{i}.Xh(:,:,k); d = d*exp(1i*angle(d(:)'*US(:))); fprintf('example %d (NMSE %.1f dB overall): %.1f dB at %.2f GHz, theta cut at phi = %.2f deg\n', i, E{i}.raw, 20*log10(norm(d(:)-US(:))/norm(US(:))), 1.9 + 0.05*(k-1), (slicep1-1)*180/c.nh); end
+for i = 1:numel(E), d = E{i}.Xh(:,:,k); d = d*exp(1i*angle(d(:)'*US(:))); fprintf('example %d (NMSE %.1f dB overall): %.1f dB at %.2f GHz, theta cut at phi = %.2f deg\n', i, E{i}.raw, 20*log10(norm(d(:)-US(:))/norm(US(:))), 1.9 + 0.05*(k-1), (slicep1-1)*180/c.nh); end
 elR = cellfun(@(e) double(e.Xh(:, slicep1, k)), E, 'UniformOutput', false);
 % --- magnitude (Fig. 6) ---
 S.elT = 20*log10(abs(elT)/peakMag);
@@ -97,8 +97,8 @@ function make_fig4(S, outBase)
     for k = 1:4, ax(k) = axes('Units','centimeters','Position',[left, y(k), w0, boxH]); hold(ax(k), 'on'); end
     hT = plot(ax(1), S.theta, S.mT, 'Linewidth', lw, 'color', cTruth);
     hP = plot(ax(3), S.theta, S.pT, 'Linewidth', lw, 'color', cTruth);
-    hR = gobjects(1, 2);
-    for i = 1:2
+    hR = gobjects(1, numel(S.mR));
+    for i = 1:numel(S.mR)
         hR(i) = plot(ax(1), S.theta, S.mR{i}, ls{i}, 'Linewidth', lwRec, 'color', cRec(i, :));
         plot(ax(2), S.theta, S.mE{i}, ls{i}, 'Linewidth', 1.2, 'color', cRec(i, :));
         plot(ax(3), S.theta, S.pR{i}, ls{i}, 'Linewidth', lwRec, 'color', cRec(i, :));
@@ -150,8 +150,8 @@ function make_fig(S, outBase)
     a2 = axes('Position', posRow(y2, w0)); hold(a2, 'on');
 
     hT = plot(a1, S.theta, S.elT, 'Linewidth', lw, 'color', cTruth);
-    hR = gobjects(1, 2); hE = hR;
-    for i = 1:2
+    hR = gobjects(1, numel(S.elR)); hE = hR;
+    for i = 1:numel(S.elR)
         hR(i) = plot(a1, S.theta, S.elR{i}, ls{i}, 'Linewidth', lwRec, 'color', cRec(i, :));
         hE(i) = plot(a2, S.theta, S.elE{i}, ls{i}, 'Linewidth', 1.2, 'color', cRec(i, :));
     end
@@ -162,7 +162,7 @@ function make_fig(S, outBase)
     end
 
     lg1 = legend(a1, [hT hR], [{'Truth'}, S.nm]);
-    lg2 = legend(a2, hE, {[S.nm{1} ' error'], [S.nm{2} ' error']});
+    lg2 = legend(a2, hE, cellfun(@(n) [n ' error'], S.nm, 'UniformOutput', false));
     drawnow
 
     lg1.Units = 'centimeters';  lg2.Units = 'centimeters';
