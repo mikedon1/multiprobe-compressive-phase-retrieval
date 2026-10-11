@@ -60,7 +60,7 @@ if nargin < 6, xlab = '$\phi$ ($^\circ$)'; xl = [0 360 - 360/numel(phi)]; end
 W = 12; H = 9.5; left = 1.6; right = 0.15; top = 0.2; bottom = 1.0; gap = 0.3;
 boxH = (H - top - bottom - 3*gap) / 4; boxW = W - left - right;
 lw = 1; lwRec = 1.6; cT = [0 0.4470 0.7410]; cR = [0.9290 0.6940 0.1250]; cE = [0.8500 0.3250 0.0980];
-fig = figure('Units','centimeters','Position',[2 2 W H], 'Color','w', 'Visible', 'off');
+fig = figure('Units','centimeters','Position',[2 2 W H], 'Color','w', 'Visible', 'on');
 set(fig, 'PaperUnits','centimeters', 'PaperSize',[W H], 'PaperPosition',[0 0 W H]);
 y = @(k) bottom + (4 - k)*(boxH + gap);
 a1 = axes('Units','centimeters','Position',[left, y(1), boxW, boxH]); hold(a1, 'on');
@@ -82,8 +82,8 @@ xlabel(a4, xlab, 'Interpreter','latex');
 for ax = [a1 a2 a3 a4], xlim(ax, xl); grid(ax, 'on'); box(ax, 'on'); end
 for ax = [a1 a2 a3], ax.XTickLabel = []; end
 for ax = [a1 a2 a4], more_yticks(ax); end            % 4-6 labels per panel
-saveas(fig, outBase, 'pdf'); close(fig);
-fprintf('wrote %s.pdf\n', outBase);
+if cpr_settings().figures.print, saveas(fig, outBase, 'pdf'); end
+if cpr_settings().figures.print, fprintf('wrote %s.pdf\n', outBase); end
 end
 
 function make_fig(S, outBase)
@@ -91,7 +91,7 @@ W = 12; H = 8.5; left = 1.45; right = 0.1; top = 0.95; bottom = 0.95; gap = 1.9;
 lw = 1; lwRec = 2.2;
 cTh = [0.8500 0.3250 0.0980]; cPhi = [0 0.4470 0.7410];
 cThR = [0.4660 0.6740 0.1880]; cPhiR = [0.9290 0.6940 0.1250];
-fig = figure('Units','centimeters','Position',[2 2 W H], 'Color','w', 'Visible', 'off');
+fig = figure('Units','centimeters','Position',[2 2 W H], 'Color','w', 'Visible', 'on');
 set(fig, 'PaperUnits','centimeters', 'PaperSize',[W H], 'PaperPosition',[0 0 W H]);
 boxH = (H - top - bottom - gap) / 2;
 y1 = bottom + boxH + gap; y2 = bottom;
@@ -120,8 +120,8 @@ for ax = [b1 t1], ax.Position = posRow(y1, boxW); end
 for ax = [b2 t2], ax.Position = posRow(y2, boxW); end
 lg1.Position(1:2) = [left + boxW + legGap, y1 + boxH - lg1.Position(4)];
 lg2.Position(1:2) = [left + boxW + legGap, y2 + boxH - lg2.Position(4)];
-saveas(fig, outBase, 'pdf'); close(fig);
-fprintf('wrote %s.pdf\n', outBase);
+if cpr_settings().figures.print, saveas(fig, outBase, 'pdf'); end
+if cpr_settings().figures.print, fprintf('wrote %s.pdf\n', outBase); end
 end
 
 function [axBot, axTop] = dual_x_row(pos)

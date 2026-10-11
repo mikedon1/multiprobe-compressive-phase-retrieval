@@ -2,17 +2,17 @@ function cpr_paper_figs(part)
 %CPR_PAPER_FIGS  Paper figures (cpr_fig.m: Times New Roman, LineWidth 1.5, no markers). Writes
 %<results>/figs/paper/<name>.pdf/.png. Multi-panel figures are separate PDFs placed side by side in
 %LaTeX.
-%   cpr_paper_figs('II')   Section II (complex):   cs2_A (24 x 6 cm), cs2_sparsity, cs2_ratio,
+%   cpr_paper_figs('supplement')  supplementary complex measurements:  cs2_A (24 x 6 cm), cs2_sparsity, cs2_ratio,
 %                         cs2_P, cs2_K, cs2_rn, cs2_nd, cs2_snr, cs2_size, cs2_exmag, cs2_exphase
 %   cpr_paper_figs('IV')   Section IV (phaseless): pr2_ratio, pr2_P, pr2_K, pr2_rn, pr2_nd,
 %                         pr2_legs, pr2_snr, pr2_size (each drawn only if its study has data)
-if nargin < 1, part = 'II'; end
+if nargin < 1, part = 'supplement'; end
 pDir = fullfile(cpr_paths().results, 'figs', 'paper');
 if ~exist(pDir, 'dir'), mkdir(pDir); end
 F = cpr_fig();
 P = @(name) fullfile(pDir, name);
 switch part
-    case 'II'
+    case 'supplement'
         matrices(F, P('cs2_A'));
         sparsity(F, P('cs2_sparsity'));
         archs(F, cpr_load('cs_ratio'), 'ratio', 'raw', P('cs2_ratio'), 'sampling ratio {\itm/n}', 'northeast', true, []);
@@ -26,7 +26,7 @@ switch part
         archs(Fs, cpr_load('cs_snr'), 'snrdB', 'raw', P('cs2_snr'), 'SNR (dB)', 'northeast', false, [-40 -10]);
         single(Fs, cpr_load('cs_size'), 'nw', 'raw', P('cs2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], [-50 0]);
         examples(F, 'cs_examples', P('cs2_exmag'), P('cs2_exphase'));
-    case 'IIsweeps'                                % only the condensed Fig. 6 panels (same as in 'II')
+    case 'supplementsweeps'                              % only the condensed Fig. 6 panels (same as in 'supplement')
         Fs = F; Fs.new = @() F.new(7.8, 5); Fs.save = @(f, file) F.save(f, file, 7.8, 5);
         single(Fs, cpr_load('cs_P'), 'P', 'raw', P('cs2_P'), 'active probes {\itP}', [1 2 4 8 16 32], [-50 -10]);
         tones(Fs, cpr_load('cs_K'), 'raw', P('cs2_K'));
@@ -71,16 +71,21 @@ for a = {'IS', 'RS', 'IC', 'RC'}
     [xu, ~, g] = unique(s.(xf)); y = accumarray(g, y, [], @mean);   % several seeds at one x: mean in dB
     h(end+1) = plot(ax, xu, y, F.ls.(a{1}), 'Color', F.col.(a{1}), 'LineWidth', F.lw); nm{end+1} = a{1}; %#ok<AGROW>
 end
-if logx, set(ax, 'XScale', 'log', 'XTick', [0.03 0.05 0.1 0.2 0.4 0.8]); end
-xlim(ax, [min(T.(xf)) max(T.(xf))]); if ~isempty(yl), ylim(ax, yl); end
-xlabel(ax, xl); ylabel(ax, 'NMSE (dB)'); legend(ax, h, nm, 'Location', loc); F.style(ax);
+if logx
+    set(ax, 'XScale', 'log', 'XTick', [0.03 0.05 0.1 0.2 0.4 0.8]);
+    if ~F.paperAxes(), set(ax, 'XTick', unique(T.(xf))); end
+end
+xlim(ax, [min(T.(xf)) max(T.(xf))]); if ~isempty(yl) && F.paperAxes(), ylim(ax, yl); end
+xlabel(ax, xl); ylabel(ax, 'NMSE (dB)'); if ~F.paperAxes(), loc = 'best'; end
+legend(ax, h, nm, 'Location', loc); F.style(ax);
 F.save(f, file);
 end
 
 function single(F, T, xf, which, file, xl, xt, yl)
 T = sortrows(T, xf); f = F.new(); ax = axes(f);
 plot(ax, T.(xf), metric(T, which), '-', 'Color', F.col.IS, 'LineWidth', F.lw);
-set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)]); if ~isempty(yl), ylim(ax, yl); end
+if ~F.paperAxes(), xt = unique(T.(xf)).'; end
+set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)]); if ~isempty(yl) && F.paperAxes(), ylim(ax, yl); end
 xlabel(ax, xl); ylabel(ax, 'NMSE (dB)'); F.style(ax); F.save(f, file);
 end
 
@@ -90,21 +95,23 @@ function tones(F, T, which, file)
 T = sortrows(T, 'K'); f = F.new(); ax = axes(f);
 plot(ax, T.K, metric(T, which), '-', 'Color', F.col.IS, 'LineWidth', F.lw);
 ylabel(ax, 'NMSE (dB)');
-set(ax, 'XScale', 'log', 'XTick', [1 2 4 8 16]); xlim(ax, [1 16]); xlabel(ax, 'tones per reading {\itK}');
+xt = [1 2 4 8 16]; if ~F.paperAxes(), xt = unique(T.K).'; end
+set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)]); xlabel(ax, 'tones per reading {\itK}');
 F.style(ax); F.save(f, file);
 end
 
 function rn(F, T, which, file, yl)
-f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
+f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {}; xall = [];
 for a = {'RS', 'RC'}
     s = T(strcmp(T.arch, a{1}), :); if isempty(s), continue; end
     xv = s.rnRS; if strcmp(a{1}, 'RC'), xv = s.rnRC; end
-    [xv, o] = sort(xv); y = metric(s, which); y = y(o);
+    [xv, o] = sort(xv); y = metric(s, which); y = y(o); xall = [xall; xv(:)]; %#ok<AGROW>
     h(end+1) = plot(ax, xv, y, F.ls.(a{1}), 'Color', F.col.(a{1}), 'LineWidth', F.lw); nm{end+1} = a{1}; %#ok<AGROW>
 end
-set(ax, 'XScale', 'log', 'XTick', [1/32 1/16 1/8 1/4 1/2 1], 'XTickLabel', {'1/32', '1/16', '1/8', '1/4', '1/2', '1'});
-xlim(ax, [1/32 1]); if ~isempty(yl), ylim(ax, yl); end
-xlabel(ax, 'installed-probe fraction {\itr_n}'); ylabel(ax, 'NMSE (dB)'); legend(ax, h, nm, 'Location', 'northeast');
+xt = [1/32 1/16 1/8 1/4 1/2 1]; if ~F.paperAxes(), xt = unique(xall).'; end
+set(ax, 'XScale', 'log', 'XTick', xt, 'XTickLabel', arrayfun(@(v) fracLabel(v), xt, 'UniformOutput', false));
+xlim(ax, [min(xt) max(xt)]); if ~isempty(yl) && F.paperAxes(), ylim(ax, yl); end
+xlabel(ax, 'installed-probe fraction {\itr_n}'); ylabel(ax, 'NMSE (dB)'); legend(ax, h, nm, 'Location', ifelse(F.paperAxes(), 'northeast', 'best'));
 F.style(ax); F.save(f, file);
 end
 
@@ -116,7 +123,7 @@ ys = metric(Ts, which); yi = arrayfun(@(n) 10*log10(mean(10.^(ys(fi <= n)/10))),
 f = F.new(); ax = axes(f); hold(ax, 'on');
 plot(ax, Tj.nd, metric(Tj, which), '-', 'Color', F.col.IS, 'LineWidth', F.lw);
 plot(ax, Tj.nd, yi, '--', 'Color', F.col.RS, 'LineWidth', F.lw);
-xt = Tj.nd.'; set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)]); if ~isempty(yl), ylim(ax, yl); end
+xt = Tj.nd.'; set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)]); if ~isempty(yl) && F.paperAxes(), ylim(ax, yl); end
 xlabel(ax, 'wavelengths {\itn}_\lambda'); ylabel(ax, 'NMSE (dB)');
 loc = 'northeast'; if strcmp(which, 'metric'), loc = 'northwest'; end   % phaseless: the "each alone" curve ends top right
 legend(ax, {'joint', 'each alone'}, 'Location', loc); F.style(ax); F.save(f, file);
@@ -224,4 +231,13 @@ end
 function T = tryload(study)
 % studies that have not produced results yet are skipped
 try, T = cpr_load(study); catch, T = []; end
+end
+
+function s = fracLabel(v)
+% 1 or 1/N for the installed-probe fractions
+if abs(v - 1) < 1e-9, s = '1'; else, s = sprintf('1/%g', round(1/v)); end
+end
+
+function v = ifelse(c, a, b)
+if c, v = a; else, v = b; end
 end

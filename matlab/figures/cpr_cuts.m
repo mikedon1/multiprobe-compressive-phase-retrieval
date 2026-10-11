@@ -88,7 +88,7 @@ function make_fig4(S, outBase)
     W = 12; H = 10.5; left = 1.6; right = 0.1; top = 0.2; bottom = 1.0; gap = 0.3; legGap = 0.25;
     lw = 1; lwRec = 1.6;
     cTruth = [0 0.4470 0.7410]; cRec = [0.8500 0.3250 0.0980; 0.9290 0.6940 0.1250]; ls = {'--', '-.'};
-    fig = figure('Visible','off','Units','centimeters','Position',[2 2 W H], 'Color','w');
+    fig = figure('Visible','on','Units','centimeters','Position',[2 2 W H], 'Color','w');
     set(fig, 'PaperUnits','centimeters', 'PaperSize',[W H], 'PaperPosition',[0 0 W H]);
     boxH = (H - top - bottom - 3*gap) / 4;
     y = @(k) bottom + (4 - k)*(boxH + gap);
@@ -119,9 +119,9 @@ function make_fig4(S, outBase)
     boxW = W - left - right - legW - legGap;
     for k = 1:4, ax(k).Position = [left, y(k), boxW, boxH]; end
     lg.Position(3) = legW; lg.Position(1:2) = [left + boxW + legGap, y(1) + boxH - lg.Position(4)];
-    saveas(fig, outBase, 'pdf');
-    fprintf('wrote %s.pdf\n', outBase);
-    close(fig);
+    if cpr_settings().figures.print, saveas(fig, outBase, 'pdf'); end
+    if cpr_settings().figures.print, fprintf('wrote %s.pdf\n', outBase); end
+
 end
 
 % =========================================================================
@@ -138,7 +138,7 @@ function make_fig(S, outBase)
                                                              % same for their errors
     ls = {'--', '-.'};                % -20 dB dashed, -34 dB dash-dot
 
-    fig = figure('Visible','off','Units','centimeters','Position',[2 2 W H], 'Color','w');
+    fig = figure('Visible','on','Units','centimeters','Position',[2 2 W H], 'Color','w');
     set(fig, 'PaperUnits','centimeters', 'PaperSize',[W H], 'PaperPosition',[0 0 W H]);
 
     boxH = (H - top - bottom - gap) / 2;
@@ -173,10 +173,9 @@ function make_fig(S, outBase)
     lg1.Position(1:2) = [left + boxW + legGap, y1 + boxH - lg1.Position(4)];
     lg2.Position(1:2) = [left + boxW + legGap, y2 + boxH - lg2.Position(4)];
 
-    saveas(fig, outBase, 'pdf')
-    print(fig, [outBase '.png'], '-dpng', '-r300')
-    fprintf('wrote %s.pdf / .png\n', outBase);
-    close(fig);
+    if cpr_settings().figures.print, saveas(fig, outBase, 'pdf'); print(fig, [outBase '.png'], '-dpng', '-r300'); end
+    if cpr_settings().figures.print, fprintf('wrote %s.pdf / .png\n', outBase); end
+
 end
 
 function more_yticks(ax)
