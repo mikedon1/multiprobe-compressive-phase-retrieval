@@ -82,7 +82,7 @@ if strcmp(active, 'quick')                          % ---- QUICK PRESET (overrid
     S.sweeps.snr = [20 50 80];
     S.sweeps.legs = [0 4 8];
     S.sweeps.size = [16 32];
-    S.sweeps.examples = struct('cs', [0.05 0.2], 'pr', [0.15 0.3]);
+    S.sweeps.examples = struct('cs', 0.2, 'pr', 0.3);   % one example per figure
     S.sweeps.gaussRatio = [0.2 0.3];
     S.sweeps.calErr = struct('IS', [2 10], 'IC', 5);
     S.figures.axes = 'auto';
