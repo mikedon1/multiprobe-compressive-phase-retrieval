@@ -1,5 +1,5 @@
 function [Et1, Ep1, info] = twoscan_solve(A1t, A1p, A2t, A2p, S, k, r1, r2, varargin)
-%IFT_SPHERE_RUN  Two-sphere iterative Fourier technique, one wavelength (Section V).
+%TWOSCAN_SOLVE  Two-scan technique (two spheres), one wavelength (Section VII).
 %
 %   [Et1, Ep1, info] = twoscan_solve(|Et(r1)|, |Ep(r1)|, |Et(r2)|, |Ep(r2)|, S, k, r1, r2, ...)
 %

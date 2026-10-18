@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: Don
     given-names: Michael
-license: MIT
+license: BSD-3-Clause-Clear
 repository-code: "https://github.com/mikedon1/multiprobe-compressive-phase-retrieval"
 abstract: >-
   MATLAB code and data for the simulations in "Compressive Phase Retrieval for

@@ -1,6 +1,6 @@
 function cpr_cuts(k, study, cutdir)
 %CPR_CUTS  Truth vs. recovered pattern cut through the pattern peak, with the pointwise error, for
-%the IS examples at two NMSE levels (paper Fig. 4 and supplementary Figs. S2 and S6).
+%the IS examples at two NMSE levels (paper Fig. 6 and supplementary Figs. S2 and S6).
 %   cpr_cuts(1, 'pr')          phaseless examples (pr_examples), elevation cut at the first frequency
 %   cpr_cuts(1, 'pr', 'phi')   the same examples along the azimuth cut through the peak
 %   cpr_cuts(1, 'cs')          complex-measurement examples (cs_examples)
@@ -17,7 +17,7 @@ set(0,'defaultAxesFontName','Times'); set(0,'defaultTextFontName','Times');
 set(0,'defaultTextFontSize',11);      set(0,'defaultAxesFontSize',11);
 set(0,'defaultLegendFontName','Times');
 % study 'cs' (default): Figs. 6-7, complex IS examples at -20/-34 dB (raw NMSE; complex data have no
-% phase ambiguity). 'pr': Section IV.A phaseless IS examples at -24/-36 dB (K = 4, so one global
+% phase ambiguity). 'pr': Section V-A phaseless IS examples at -24/-36 dB (K = 4, so one global
 % phase is removed over all wavelengths). Outputs cs2_cut* or pr2_cut*.
 if nargin < 1 || isempty(k), k = 1; end   % 1.90 GHz: most detailed theta cut (cpr_pick_cut.m)
 if nargin < 2, study = 'cs'; end
@@ -33,8 +33,10 @@ end
 nm = cellfun(@(e) e.(scoreF), E);
 [~, i1] = min(abs(nm - targets(1))); [~, i2] = min(abs(nm - targets(2))); E = E(unique([i1 i2], 'stable'));   % one example in the quick preset: both targets pick the same run
 c = E{1}.cfg; [X, ~] = pattern_crlh(c.nw, c.nd, c.f0idx);
-for i = 1:numel(E)                        % remove one global phase over all wavelengths
-    Xh = E{i}.Xh; E{i}.Xh = Xh * exp(1i*angle(Xh(:)'*X(:))); E{i}.raw = E{i}.(scoreF);
+for i = 1:numel(E)                        % phaseless: remove one global phase over all wavelengths (the
+    Xh = E{i}.Xh;                         %   scoring convention for K > 1); complex: no alignment (raw NMSE)
+    if strcmp(study, 'pr'), Xh = Xh * exp(1i*angle(Xh(:)'*X(:))); end
+    E{i}.Xh = Xh; E{i}.raw = E{i}.(scoreF);
 end
 US = X(:, :, k); nw = size(US, 1);
 [~, ip] = max(abs(US(:))); [~, slicep1] = ind2sub(size(US), ip);        % elevation cut through the peak
@@ -46,16 +48,16 @@ mn = char(8722);
 S = struct(); S.theta = theta_deg; S.thetaLim = [0 360-360/nw];
 S.nm = arrayfun(@(i) sprintf('%s%.0f dB', mn, -E{i}.raw), 1:numel(E), 'UniformOutput', false);
 elT = US(:, slicep1);
-for i = 1:numel(E), d = E{i}.Xh(:,:,k); d = d*exp(1i*angle(d(:)'*US(:))); fprintf('example %d (NMSE %.1f dB overall): %.1f dB at %.2f GHz, theta cut at phi = %.2f deg\n', i, E{i}.raw, 20*log10(norm(d(:)-US(:))/norm(US(:))), 1.9 + 0.05*(k-1), (slicep1-1)*180/c.nh); end
+for i = 1:numel(E), d = E{i}.Xh(:,:,k); fprintf('example %d (NMSE %.1f dB overall): %.1f dB at %.2f GHz, theta cut at phi = %.2f deg\n', i, E{i}.raw, 20*log10(norm(d(:)-US(:))/norm(US(:))), 1.9 + 0.05*(k-1), (slicep1-1)*180/c.nh); end
 elR = cellfun(@(e) double(e.Xh(:, slicep1, k)), E, 'UniformOutput', false);
-% --- magnitude (Fig. 6) ---
+% --- magnitude ---
 S.elT = 20*log10(abs(elT)/peakMag);
 S.elR = cellfun(@(v) 20*log10(abs(v)/peakMag), elR, 'UniformOutput', false);
 S.elE = cellfun(@(v) errdB(v, elT), elR, 'UniformOutput', false);
 S.ylab1 = '$\left| E \right|$ (dB)';
-S.ylab2 = '$\left| \mathrm{Error} \right|$ (dB)';
+S.ylab2 = 'Complex error (dB)';
 make_fig(S, fullfile(pDir, [pre '_cutmag']));
-% --- phase (Fig. 7) ---
+% --- phase ---
 S.elT = angle(elT)*180/pi;
 S.elR = cellfun(@(v) angle(v)*180/pi, elR, 'UniformOutput', false);
 S.elE = cellfun(@(v) wrapdeg(angle(v) - angle(elT)), elR, 'UniformOutput', false);
@@ -106,7 +108,7 @@ function make_fig4(S, outBase)
     end
     uistack(hT, 'top'); uistack(hP, 'top');           % truth drawn last in both panels
     ylabel(ax(1), '$\left| E \right|$ (dB)', 'Interpreter', 'latex');
-    ylabel(ax(2), '$\left| \mathrm{Error} \right|$ (dB)', 'Interpreter', 'latex');
+    ylabel(ax(2), 'Complex error (dB)', 'Interpreter', 'latex');
     ylabel(ax(3), '$\angle E$ ($^\circ$)', 'Interpreter', 'latex');
     ylabel(ax(4), 'Error ($^\circ$)', 'Interpreter', 'latex');   % short: fits the shorter panels
     ylim(ax(3), [-180 180]); ax(3).YTick = -180:90:180;

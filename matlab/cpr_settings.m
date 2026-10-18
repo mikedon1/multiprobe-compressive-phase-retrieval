@@ -30,9 +30,9 @@ S.solverSNR = [40 48];     % stopping setting SNR_s in dB (residual target -(SNR
 S.ratioCircular = 0.6;     % sampling ratio m/n of the circular architectures (phaseless): they need more measurements
 
 % 3. NUMBER OF TRIALS (random seeds) PER POINT
-S.trials.sweep      = 1;   % points of the Section IV sweeps and the supplementary sweeps
+S.trials.sweep      = 1;   % points of the Section V sweeps and the supplementary sweeps
 S.trials.snrCircular = 3;  % IC and RC points of the SNR sweep (mean in dB over the trials)
-S.trials.nearfield  = 1;   % Section V compressive phase retrieval runs
+S.trials.nearfield  = 1;   % Section VII compressive phase retrieval runs
 S.trials.fullwave   = 10;  % Section VI full-wave trials
 
 % 4. SWEEP GRIDS (the x-axis values of each figure)
@@ -51,12 +51,12 @@ S.sweeps.examples = struct('cs', [0.03 0.05 0.08 0.2], 'pr', [0.1 0.15 0.2 0.3 0
 S.sweeps.gaussRatio = [0.08 0.1 0.15 0.2 0.3];   % sampling ratios of the switches-vs-Gaussian-weights comparison (IS)
 S.sweeps.calErr = struct('IS', [1 2 5 10 20], 'IC', [2 5 10]);   % rms cable phase errors in degrees
 
-% 5. NEAR-FIELD COMPARISON (Section V) AND FULL-WAVE EXAMPLE (Section VI)
+% 5. FULL-WAVE EXAMPLE (Section VI) AND NEAR-FIELD COMPARISON (Section VII)
 S.nearfield.snr         = 50;     % dB
 S.nearfield.twoScanStarts = 400;  % maximum random starts of the two-scan technique per frequency
 S.fullwave.nd           = 16;     % frequencies of the HFSS sweep to use (2.375-3.125 GHz in 50 MHz steps)
 S.fullwave.nitGAMP      = 200;    % GAMP iterations per EM update in Section VI (the Section VI runs used 200;
-                                  %   the circular value S.nitGAMP(2) applies to Sections IV and V)
+                                  %   the circular value S.nitGAMP(2) applies to Sections V and VII)
 
 % 6. PATHS AND COMPUTE
 S.gampPath   = '';    % folder with GAMPmatlab (see cpr_setup.m); empty: $GAMPMATLAB or external/GAMPmatlab

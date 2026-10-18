@@ -1,10 +1,10 @@
 function cpr_fig_sec5()
-%CPR_FIG_SEC5  Section V figures in the paper's format (cpr_fig: 12 x 6 cm, Times, LaTeX axis labels).
-%  ift_freq.pdf  : NMSE per frequency at 50 dB SNR, two-sphere IFT vs. dual-pol CPR (IC). Both are
+%CPR_FIG_SEC5  Section VII figures in the paper's format (cpr_fig: 12 x 6 cm, Times, LaTeX axis labels).
+%  ift_freq.pdf  : NMSE per frequency at 50 dB SNR, two-scan technique vs. dual-pol CPR (IC). Both are
 %                  scored on both tangential components on the first sphere, one phase per
-%                  wavelength (IFT: R(t).fieldErr; CPR: r.scoreVec.each).
-%  ift_accel.pdf : acceleration t_IFT/t_CPR vs. gamma = t_m/t_s from eqs. (mtime_ift_norm) and
-%                  (mtime_cpr), at n_lambda = 16, K = 4, rho = 0.6 (the Section V values), for
+%                  wavelength (two-scan: R(t).fieldErr; CPR: r.scoreVec.each).
+%  ift_accel.pdf : acceleration t_TS/t_CPR vs. gamma = t_m/t_s from eqs. (mtime_ift_norm) and
+%                  (mtime_cpr), at n_lambda = 16, K = 4, rho = 0.6 (the Section VII values), for
 %                  several grid sizes (n_theta = n_phi/2).
 outDir = cpr_paths().results;
 pDir = fullfile(outDir, 'figs', 'paper');
@@ -50,7 +50,7 @@ fprintf('two-scan %s\n', mat2str(round(eI, 1)));
 nl = 16; K = 4; rho = 0.6; g = logspace(0, 4, 200); nphis = [64 48 32 16];
 f = F.new(); ax = axes(f); hold(ax, 'on'); nm = {};
 for i = 1:numel(nphis)
-    np = nphis(i); nt = 2*np;    % arc probes x rotations as in the IC layout of Fig. 13 (64 x 32)
+    np = nphis(i); nt = 2*np;    % arc probes x rotations as in the IC layout of Fig. 10 (64 x 32)
     tI = g*(2*np - 1) + 4*nt*np*nl;
     tC = g*(np - 1) + 2*rho*nt*np*nl/K;
     plot(ax, g, tI./tC, F.lss{i}, 'Color', F.cols(i,:), 'LineWidth', F.lw);

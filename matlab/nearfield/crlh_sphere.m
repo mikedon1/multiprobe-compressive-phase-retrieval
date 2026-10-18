@@ -1,6 +1,6 @@
 function D = crlh_sphere(r, nw, nd, f0idx, tol_dB)
 %CRLH_SPHERE  The CRLH antenna's field on a sphere of radius r (m), from its openEMS far field
-%through the vector spherical-wave expansion (two-sphere IFT, Section V).
+%through the vector spherical-wave expansion (two-scan technique, Section VII).
 %
 %   D = crlh_sphere(r, nw, nd, f0idx)      r = Inf gives the far field (paper pattern)
 %
@@ -56,7 +56,7 @@ for t = 1:nd
     E = swe_cprh(D.Et(:,:,t), D.Ep(:,:,t), ph.');
     D.X(:,:,t) = E(lin);
 end
-% Dual polarization (Section V): the components a dual-polarized probe on the arc measures,
+% Dual polarization (Section VII): the components a dual-polarized probe on the arc measures,
 % along the arc tangent (theta port) and the arc normal (phi port). On the far half of each
 % great circle (theta_g > 180) both point opposite to the physical theta-hat / phi-hat, so the
 % arc components are the physical ones times -1 there (continuous along each great circle).
