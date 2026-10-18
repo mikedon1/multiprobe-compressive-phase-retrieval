@@ -7,5 +7,6 @@ P.data = fullfile(P.root, 'data');
 S = cpr_settings();
 sub = 'results'; if strcmp(S.preset, 'quick'), sub = 'results_quick'; end   % quick runs never mix with paper runs
 if isempty(S.resultsDir), P.results = fullfile(P.root, sub); else, P.results = S.resultsDir; end
+if ~isempty(getenv('CPR_RESULTS')), P.results = getenv('CPR_RESULTS'); end   % per-process override (fresh runs)
 if ~exist(P.results, 'dir'), mkdir(P.results); end
 end

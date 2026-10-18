@@ -1,6 +1,6 @@
 function cpr_conj_check()
 %CPR_CONJ_CHECK  Conjugate ambiguity of the sensing operators (50 cm cables, on/off switches, K = 1),
-%Section IV-B.
+%Section III-C.
 %  Factorization: D = the phase of the first nonzero entry in each column of Phi. If Phi = B D
 %  with B real, then x# = D^-1 (D x)* gives the same |Phi x|. Reported per operator:
 %    relImag = max|imag(B)| / max|B| (0: Phi factors exactly), and

@@ -1,5 +1,5 @@
 function S = swe_setup(theta, phi, N)
-%SWE_SETUP  Vector spherical-wave expansion on a theta x phi tensor grid (two-sphere IFT).
+%SWE_SETUP  Vector spherical-wave expansion on a theta x phi tensor grid (two-scan technique).
 %
 %   S = swe_setup(theta, phi, N)   theta: nt x 1 in [0, pi]; phi: np x 1 equispaced over a
 %                                  full circle (np >= 2N+1); N: highest mode degree.

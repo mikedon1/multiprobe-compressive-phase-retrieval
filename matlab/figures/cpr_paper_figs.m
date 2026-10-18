@@ -4,7 +4,7 @@ function cpr_paper_figs(part)
 %LaTeX.
 %   cpr_paper_figs('supplement')  supplementary complex measurements:  cs2_A (24 x 6 cm), cs2_sparsity, cs2_ratio,
 %                         cs2_P, cs2_K, cs2_rn, cs2_nd, cs2_snr, cs2_size, cs2_exmag, cs2_exphase
-%   cpr_paper_figs('IV')   Section IV (phaseless): pr2_ratio, pr2_P, pr2_K, pr2_rn, pr2_nd,
+%   cpr_paper_figs('IV')   Section V (phaseless): pr2_ratio, pr2_P, pr2_K, pr2_rn, pr2_nd,
 %                         pr2_legs, pr2_snr, pr2_size (each drawn only if its study has data)
 if nargin < 1, part = 'supplement'; end
 pDir = fullfile(cpr_paths().results, 'figs', 'paper');
@@ -37,7 +37,7 @@ switch part
     case 'fig6'                                    % only the NMSE-example figure (Fig. 6)
         examples(F, 'cs_examples', P('cs2_exmag'), P('cs2_exphase'));
     case 'IV'
-        % Section IV panels: shorter (12 x 4.5 cm) for compact 2 x 2 figures; 11 pt text
+        % Section V panels: shorter (12 x 4.5 cm) for compact 2 x 2 figures; 11 pt text
         Fs = F; Fs.new = @() F.new(12, 4.5); Fs.save = @(f, file) F.save(f, file, 12, 4.5);
         % Fig. 6 (one row of three at 0.32\textwidth; the P panel is in the supplement):
         % drawn at 7.8 x 5 cm like the Fig. 5 panels, so the 11 pt text prints at full size
@@ -51,6 +51,7 @@ switch part
         T = tryload('pr_legs');  if ~isempty(T), archs(F3, T, 'nlegs', 'metric', P('pr2_legs'), 'number of leg probes', 'northeast', false, []); end
         T = tryload('pr_snr');   T2 = tryload('pr_snrseeds'); if ~isempty(T) && ~isempty(T2), T = [T; T2]; end   % IC/RC seeds 2-3 (mean of 3)
         if ~isempty(T), archs(F3, T, 'snrdB', 'metric', P('pr2_snr'), 'SNR (dB)', 'northeast', false, []); end
+        T = tryload('pr_calerr'); if ~isempty(T), calerr(F3, T, P('pr2_calerr')); end
         T = tryload('pr_size');  if ~isempty(T), single(F3, T, 'nw', 'metric', P('pr2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], []); end
 end
 fprintf('cpr_paper_figs(%s): figures in %s\n', part, pDir);
@@ -68,8 +69,12 @@ f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
 for a = {'IS', 'RS', 'IC', 'RC'}
     s = T(strcmp(T.arch, a{1}), :); if isempty(s), continue; end
     s = sortrows(s, xf); y = metric(s, which);
-    [xu, ~, g] = unique(s.(xf)); y = accumarray(g, y, [], @mean);   % several seeds at one x: mean in dB
+    [xu, ~, g] = unique(s.(xf)); y0 = y; y = accumarray(g, y0, [], @mean);   % several seeds at one x: mean in dB
     h(end+1) = plot(ax, xu, y, F.ls.(a{1}), 'Color', F.col.(a{1}), 'LineWidth', F.lw); nm{end+1} = a{1}; %#ok<AGROW>
+    if any(accumarray(g, 1) > 1)                                   % range over the trials at each x
+        lo = accumarray(g, y0, [], @min); hi = accumarray(g, y0, [], @max);
+        for i = 1:numel(xu), plot(ax, [xu(i) xu(i)], [lo(i) hi(i)], '-', 'Color', F.col.(a{1}), 'LineWidth', 0.75); end
+    end
 end
 if logx
     set(ax, 'XScale', 'log', 'XTick', [0.03 0.05 0.1 0.2 0.4 0.8]);
@@ -119,7 +124,11 @@ function nd(F, T, file, yl)
 which = 'metric'; if strcmp(T.meas{1}, 'complex'), which = 'raw'; end
 j = startsWith(T.label, 'joint'); s1 = startsWith(T.label, 'single');
 Tj = sortrows(T(j, :), 'nd'); Ts = T(s1, :); fi = cellfun(@(l) sscanf(l, 'single_f%d'), Ts.label);
-ys = metric(Ts, which); yi = arrayfun(@(n) 10*log10(mean(10.^(ys(fi <= n)/10))), Tj.nd);
+ys = metric(Ts, which);
+% "each alone": the pooled NMSE of the independently recovered wavelengths, i.e. their errors summed
+% and divided by the summed signal energy, the same aggregation as the joint NMSE
+Xe = pattern_crlh(Ts.nw(1), max(fi), 1); Ek = squeeze(sum(sum(abs(Xe).^2, 1), 2)); Ek = Ek(:);
+yi = arrayfun(@(n) 10*log10(sum(10.^(ys(fi <= n)/10) .* Ek(fi(fi <= n))) / sum(Ek(fi(fi <= n)))), Tj.nd);
 f = F.new(); ax = axes(f); hold(ax, 'on');
 plot(ax, Tj.nd, metric(Tj, which), '-', 'Color', F.col.IS, 'LineWidth', F.lw);
 plot(ax, Tj.nd, yi, '--', 'Color', F.col.RS, 'LineWidth', F.lw);
@@ -127,6 +136,22 @@ xt = Tj.nd.'; set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)])
 xlabel(ax, 'wavelengths {\itn}_\lambda'); ylabel(ax, 'NMSE (dB)');
 loc = 'northeast'; if strcmp(which, 'metric'), loc = 'northwest'; end   % phaseless: the "each alone" curve ends top right
 legend(ax, {'joint', 'each alone'}, 'Location', loc); F.style(ax); F.save(f, file);
+end
+
+function calerr(F, T, file)
+% NMSE vs rms cable phase error sigma_phi for IS and IC, with the 20 log10(sigma_phi) reference
+f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
+for a = {'IS', 'IC'}
+    s = sortrows(T(strcmp(T.arch, a{1}), :), 'calErrDeg');
+    [xu, ~, g] = unique(s.calErrDeg); y = accumarray(g, s.global, [], @mean);
+    h(end+1) = plot(ax, xu, y, F.ls.(a{1}), 'Color', F.col.(a{1}), 'LineWidth', F.lw); nm{end+1} = a{1}; %#ok<AGROW>
+end
+xr = linspace(0.5, max(T.calErrDeg), 50);
+h(end+1) = plot(ax, xr, 20*log10(xr*pi/180), ':', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
+nm{end+1} = '20log_{10}\sigma_\phi';
+xlim(ax, [0 max(T.calErrDeg)]);
+xlabel(ax, 'rms cable phase error \sigma_\phi (deg)'); ylabel(ax, 'NMSE (dB)');
+legend(ax, h, nm, 'Location', 'southeast'); F.style(ax); F.save(f, file);
 end
 
 function matrices(F, file)

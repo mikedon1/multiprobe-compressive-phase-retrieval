@@ -33,7 +33,7 @@ P = struct('theta', theta_deg, 'phi', phi_deg, 'thetaLim', [theta_deg(1) theta_d
 P.elT = 20*log10(abs(el_truth)); P.elR = 20*log10(abs(el_rec));
 P.azT = 20*log10(abs(az_truth)); P.azR = 20*log10(abs(az_rec));
 P.elE = errdB(el_rec, el_truth); P.azE = errdB(az_rec, az_truth);
-P.ylab1 = '$\left| \widetilde{E} \right|$ (dB)'; P.ylab2 = '$\left| \mathrm{Error} \right|$ (dB)';
+P.ylab1 = '$\left| \widetilde{E} \right|$ (dB)'; P.ylab2 = 'Complex error (dB)';
 make_fig(P, fullfile(pDir, 'cutEfull3'));
 fprintf('max magnitude error along the cuts %.1f dB re peak\n', max([P.elE; P.azE]));
 P.elT = angle(el_truth)*180/pi; P.elR = angle(el_rec)*180/pi;
@@ -70,7 +70,7 @@ ylabel(a1, '$|E|$ (dB)', 'Interpreter','latex');
 lgP = legend(a1, [hT1 hR1], {'Truth','Recovered'});   % placed outside the plot area, top right
 a2 = axes('Units','centimeters','Position',[left, y(2), boxW, boxH]); hold(a2, 'on');
 plot(a2, phi, max(20*log10(abs(xr - xt)/pk), -100), 'Linewidth', lw, 'color', cE);
-ylabel(a2, '$|\mathrm{Error}|$ (dB)', 'Interpreter','latex');
+ylabel(a2, 'Complex error (dB)', 'Interpreter','latex');
 a3 = axes('Units','centimeters','Position',[left, y(3), boxW, boxH]); hold(a3, 'on');
 plot(a3, phi, angle(xr)*180/pi, '--', 'Linewidth', lwRec, 'color', cR);
 plot(a3, phi, angle(xt)*180/pi, 'Linewidth', lw, 'color', cT);

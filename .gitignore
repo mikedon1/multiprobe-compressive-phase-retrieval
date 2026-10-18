@@ -1,5 +1,6 @@
 results/
 results_quick/
+results_*/
 external/
 *.asv
 *.autosave

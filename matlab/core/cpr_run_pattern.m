@@ -1,7 +1,7 @@
 function r = cpr_run_pattern(c, seed, X, f)
 %CPR_RUN_PATTERN  cpr_run.m for an arbitrary pattern X (nw x nh x nd*npol) and frequencies f.
-%Used by the IFT comparison (near-field data). c.nw and c.nh are set from X, so the grid need
-%not be nh = nw/2. With c.npol = 2 (dual polarization, Section V), X stacks the polarizations
+%Used by the two-scan comparison (near-field data). c.nw and c.nh are set from X, so the grid need
+%not be nh = nw/2. With c.npol = 2 (dual polarization, Section VII), X stacks the polarizations
 %along the third dimension ([pol 1: f_1..f_nd, pol 2: f_1..f_nd]); the basis is the same per
 %polarization with one shared delay (cpr_basis), and readings combine ports of both
 %(make_readings). Everything else (readings, noise, solver, gauge, scoring) is cpr_run.m.

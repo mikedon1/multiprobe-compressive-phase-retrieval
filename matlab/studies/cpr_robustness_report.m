@@ -1,6 +1,6 @@
 function cpr_robustness_report()
-%CPR_ROBUSTNESS_REPORT  Print the numbers of the paper's Gaussian-weight comparison (Section IV-A) and
-%cable-calibration-error sensitivity (Section IV-C) from the studies pr_gauss and pr_calerr.
+%CPR_ROBUSTNESS_REPORT  Print the numbers of the paper's Gaussian-weight comparison (Section V-A) and
+%cable-calibration-error sensitivity (Section V-C) from the studies pr_gauss and pr_calerr.
 %   run_study('pr_gauss'); run_study('pr_calerr'); cpr_robustness_report
 % NMSE is the whole-pattern value with one global phase removed (dB).
 T = cpr_load('pr_gauss');

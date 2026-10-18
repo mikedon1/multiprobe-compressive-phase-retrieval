@@ -46,7 +46,7 @@ c.nitGAMP    = S.nitGAMP(1);         % GAMP iterations per update
 c.solverSNRdB = S.solverSNR(1);      % accept a restart if its residual is below -(solverSNRdB + 2) dB
 c.stopDB     = NaN;         % explicit acceptance target in dB; NaN: -(solverSNRdB + 2)
 c.logRestarts = false;      % phaseless: score every restart (restart studies only)
-c.npol       = 1;           % polarizations recovered jointly (2: dual-polarized ports, Section V)
+c.npol       = 1;           % polarizations recovered jointly (2: dual-polarized ports, two-scan comparison of Section VII)
 
 % ---- per-measurement-type and per-architecture bases -------------------------------------------
 meas = c.meas; arch = c.arch;

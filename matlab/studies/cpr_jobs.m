@@ -14,8 +14,8 @@ function J = cpr_jobs(study)
 %   <meas>_size      angular resolution nw (IS)
 %   <meas>_examples  IS runs that keep the recovered pattern (pattern-cut figures)
 %   pr_gauss         on/off switches vs complex Gaussian weights on the same probes (IS at several
-%                    sampling ratios, IC at its base ratio): Section IV-A
-%   pr_calerr        sensitivity to rms cable phase errors in the data (IS and IC): Section IV-C
+%                    sampling ratios, IC at its base ratio): Section V-A
+%   pr_calerr        sensitivity to rms cable phase errors in the data (IS and IC): Section V-C
 %   smoke            two tiny jobs, to check that the code runs
 S = cpr_settings();
 J = struct('study', {}, 'label', {}, 'over', {}, 'seed', {}, 'cost', {}, 'saveXh', {});

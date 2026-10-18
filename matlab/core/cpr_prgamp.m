@@ -5,7 +5,7 @@ function [xhat, info] = cpr_prgamp(yAmp, A, opts)
 %
 % Recovers sparse coefficients s from amplitudes yAmp = |A*s + w| and returns the PATTERN
 % estimate xhat = A.syn(s_hat) of the restart with the lowest amplitude residual. Written for
-% this project (MIT license) from the procedure stated in the paper (Section III and
+% this project (BSD 3-Clause Clear license) from the procedure stated in the paper (Section IV and
 % Appendix B). It calls GAMPmatlab (gampEst, GampOpt, CAwgnEstimIn, SparseScaEstim,
 % ncCAwgnEstimOut), which must be on the MATLAB path; GAMPmatlab itself is not part of this
 % code.

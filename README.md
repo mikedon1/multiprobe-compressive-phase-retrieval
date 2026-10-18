@@ -8,14 +8,15 @@ MATLAB code and data for the simulations in
 The code recovers antenna radiation patterns from amplitude-only (phaseless) multi-probe
 measurements. Random sets of probes are combined with on/off switches and calibrated cables, several
 tones are transmitted in each reading, and the pattern is recovered with a sparsity prior and
-PR-GAMP. It also contains the comparison with the two-scan phaseless near-field technique
-(Section V) and the full-wave example with HFSS probe responses (Section VI).
+PR-GAMP. It also contains the full-wave example with HFSS probe responses (Section VI) and the
+comparison with the two-scan phaseless near-field technique (Section VII).
 
 ## Requirements
 
-* MATLAB (developed and tested with R2025b on Windows). **No toolboxes are needed.**
-* **GAMPmatlab**, which is *not* included in this repository (it carries no license, so it cannot be
-  redistributed). Download it from <https://sourceforge.net/projects/gampmatlab/> (release
+* MATLAB (developed and tested with R2025b on Windows). The compressive phase retrieval code needs no
+  toolboxes. The two-scan benchmark of Section VII (`run_nearfield`) needs the **Optimization Toolbox**
+  (`fminunc`, `lsqnonlin`); `run_nearfield` checks for it before starting.
+* **GAMPmatlab**, which is *not* included in this repository. Download it from <https://sourceforge.net/projects/gampmatlab/> (release
   `gampmatlab20171011` or the trunk) and tell the code where it is, in one of three ways:
   set `S.gampPath` in `matlab/cpr_settings.m`, set the `GAMPMATLAB` environment variable, or unpack it into
   `external/GAMPmatlab`. The code uses `code/main` and `code/phase` of that package.
@@ -24,11 +25,11 @@ PR-GAMP. It also contains the comparison with the two-scan phaseless near-field 
 
 ```matlab
 >> setup                 % once per MATLAB session, from the repository root
->> check_reproduction    % about 30 s: reproduces one number of the paper (IS, m/n = 0.3: -43.7 dB)
+>> check_reproduction    % about 1 min: operator test, then one number of the paper (IS, m/n = 0.3)
 >> run_all('Preset', 'quick')   % everything at reduced size (see below)
 ```
 
-The quick run writes to `results_quick/` and took about 1.5 hours on a laptop (10 physical cores). `run_all` with no argument uses the paper settings and takes days. `run_all` lists in its comments what each step produces and which paper figure it belongs to.
+The quick run writes to `results_quick/` and took about 1.5 hours on a laptop (10 physical cores). `run_all` with no argument uses the paper settings and takes significantly longer. `run_all` lists in its comments what each step produces and which paper figure it belongs to.
 `run_study('pr_ratio')` runs a single study, and `cpr_load('pr_ratio')` returns its results as a table.
 
 ## Settings
@@ -37,13 +38,14 @@ Everything you are likely to change is at the top of **`matlab/cpr_settings.m`**
 
 | Setting | Meaning | `paper` | `quick` |
 |---|---|---|---|
-| `nw`, `nd` | pattern resolution (theta samples; phi uses `nw/2`) and number of wavelengths | 64, 16 | 32, 4 |
-| `restarts` | maximum random restarts, [IS/RS, IC/RC] | [10 30] | [3 6] |
-| `nitEM`, `nitGAMP`, `solverSNR` | EM updates, GAMP iterations per update, stopping setting SNR_s | [6 20], [200 1000], [40 48] | smaller |
+| `nw`, `nd` | pattern resolution (theta samples; phi uses `nw/2`) and number of wavelengths | 64, 16 | 32, 8 |
+| `restarts` | maximum random restarts, [IS/RS, IC/RC] | [10 30] | [3 5] |
+| `nitEM`, `nitGAMP`, `solverSNR` | EM updates, GAMP iterations per update, stopping setting SNR_s | [6 20], [200 1000], [40 48] | [6 6], [200 300], [40 48] |
 | `trials` | trials per point (sweeps, circular SNR sweep, near-field, full-wave) | 1, 3, 1, 10 | 1, 1, 1, 2 |
 | `sweeps` | the x-axis values of every sweep | the paper's | a few points |
 | `nearfield` | SNR and maximum number of two-scan starts | 50 dB, 400 | 50 dB, 10 |
-| `fullwave` | number of HFSS frequencies and GAMP iterations in Section VI | 16, 200 | 4, 100 |
+| `fullwave` | number of HFSS frequencies and GAMP iterations in Section VI | 16, 200 | 8, 200 |
+| `resultsDir` | results folder (the `CPR_RESULTS` environment variable overrides it) | `results/` | `results_quick/` |
 | `figures.print` | false: only draw figures in MATLAB; true: also write PDF and PNG | true | true |
 | `figures.axes` | `'paper'`: axis limits and ticks as in the paper; `'auto'`: automatic, from the data | `'paper'` | `'auto'` |
 
@@ -57,19 +59,21 @@ its numbers do **not** match the paper.
 ```
 matlab/core/              readings, sensing operator, sparse basis, solver, scoring
 matlab/studies/           study definitions, loading, conjugate-ambiguity checks
-matlab/nearfield/         Section V: spherical-wave expansion, near-field data, two-scan technique
 matlab/fullwave/          Section VI: HFSS data, leg calibration, full-wave trials
+matlab/nearfield/         Section VII: spherical-wave expansion, near-field data, two-scan technique
 matlab/figures/           figure scripts
 data/                     antenna far field (CRLH leaky-wave antenna, openEMS) and HFSS Touchstone files
 ```
 
 ## Notes on reproducibility
 
-* Every job seeds MATLAB's random generator from its seed, so reruns are exact on the same MATLAB version.
-* With the `paper` preset, Sections IV and V use 1000 GAMP iterations per EM update for IC and RC, and
-  Section VI uses 200 (`S.fullwave.nitGAMP`), which is what the reported Section VI runs used.
+* Every job seeds MATLAB's random generator from its seed. Reruns reproduce the results on the same
+  MATLAB version and platform; numerical libraries and multithreading can change the last digits elsewhere.
 * Everything is checkpointed per job: an interrupted run resumes where it stopped, and
   `run_study(name, 'Workers', N, 'Worker', k)` splits a study over several MATLAB processes.
+* Each checkpoint stores the settings and data version it was made with. Resuming with different
+  settings is refused; use a new results folder instead. Failed jobs are run again on the next call.
+* `check_reproduction` raises an error if the operator test or the reference value fails.
 
 ## Data
 
@@ -82,6 +86,6 @@ data/                     antenna far field (CRLH leaky-wave antenna, openEMS) a
 
 ## License and citation
 
-The code and data in this repository are released under the MIT License (see `LICENSE`). GAMPmatlab is a
+The code and data in this repository are released under the BSD 3-Clause Clear License (see `LICENSE`). The license grants no rights to any patents; the methods implemented here may be covered by patents of the author. GAMPmatlab is a
 separate package with its own terms. If you use this repository, please cite the paper and the archived
 release (see `CITATION.cff`).

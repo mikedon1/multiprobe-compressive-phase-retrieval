@@ -1,5 +1,5 @@
 function twoscan_run(antenna, r1, r2, snr, tidx, varargin)
-%IFT_SPHERE_FLOOR  Two-sphere IFT with the same restart rule as CPR: keep starting (quasi-
+%TWOSCAN_RUN  Two-scan technique with the same restart rule as CPR: keep starting (quasi-
 %Newton, random starts) until the data residual reaches the noise floor, up to MaxStarts.
 %Per-frequency results are saved after each frequency (resumable) to
 %<results>/ift_floor_<antenna>_r<r1>_<r2>_snr<snr>.mat.
