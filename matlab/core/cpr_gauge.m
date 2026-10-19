@@ -18,12 +18,16 @@ if nd < 2, return; end
 X = reshape(A.syn(e.xhat), n2, nd);
 switch mode
     case 'perlambda'
-        if nd ~= numel(f), error('cpr_gauge: perlambda (K = 1) not implemented for dual polarization'); end
-        a = zeros(1, nd);
-        for k = 2:nd
-            a(k) = a(k-1) + angle(X(:,k-1)' * X(:,k));
+        % dual polarization: A.nd = npol*nf slices [pol 1: f_1..f_nf, pol 2: ...]; one phase per wavelength,
+        % shared by the polarizations (the polarizations of one tone are measured coherently)
+        nf = numel(f); npol = round(nd / nf);
+        a = zeros(1, nf);
+        for k = 2:nf
+            acc = 0;
+            for q = 1:npol, acc = acc + X(:, (q-1)*nf + k-1)' * X(:, (q-1)*nf + k); end
+            a(k) = a(k-1) + angle(acc);
         end
-        d = kron(exp(-1i*a(:)), ones(n2, 1));
+        d = kron(repmat(exp(-1i*a(:)), npol, 1), ones(n2, 1));
         rot = @(s) A.ana(d .* A.syn(s));
         e.xhat = rot(e.xhat); e.xhatNext = rot(e.xhatNext); e.xhatDamp = rot(e.xhatDamp);
         a = a(:);

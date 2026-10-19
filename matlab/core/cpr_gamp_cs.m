@@ -24,7 +24,7 @@ opt.adaptStep = 1; opt.stepWindow = 20; opt.uniformVariance = 0;
 if o.damped   % structured (rotating) matrices: damp like PR-GAMP
     opt.step = 0.25; opt.stepMax = 0.5; opt.stepMin = 0.05; opt.adaptStepBethe = 1;
 end
-t0 = tic; xold = inf(n, 1); tau = 0;
+t0 = tic; xold = []; tau = 0;              % pattern-domain estimate (its length differs from n for the VSH basis)
 for r = 1:o.nRounds
     [estFin, optFin] = gampEst(inputEst, outputEst, A, opt);
     xnew = A.syn(estFin.xhat);
@@ -32,7 +32,7 @@ for r = 1:o.nRounds
         estFin = o.gauge(estFin);
         if isfield(estFin, 'tau'), tau = estFin.tau; end
     end
-    if norm(xnew - xold)/norm(xnew) < 1e-4, break; end
+    if ~isempty(xold) && norm(xnew - xold)/norm(xnew) < 1e-4, break; end
     xold = xnew;
     opt = optFin.warmStart(estFin, 'tol', 1e-7);
     if ~isempty(o.gauge), opt.valIn0 = -inf; opt.valOpt0 = []; end

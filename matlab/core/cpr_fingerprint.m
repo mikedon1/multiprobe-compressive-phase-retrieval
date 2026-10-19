@@ -6,7 +6,8 @@ function fp = cpr_fingerprint()
 S = cpr_settings();
 S = rmfield(S, intersect(fieldnames(S), {'resultsDir', 'threads', 'figures', 'gampPath'}));
 fp.settings = S;
-fp.dataVersion = 2;              % 2: pattern_crlh shifts phi on the unique 180 columns (seam fix)
+fp.dataVersion = 4;              % 2: seam fix; 3: component option, phi legs, detector SNR model;
+                                 % 4: VSH basis with the exact pattern, dual polarization, 32 x 16 grid, no legs, one solver setting
 d = dir(fullfile(cpr_paths().data, 'crlh_far_field.mat'));
 fp.dataBytes = d.bytes;
 end

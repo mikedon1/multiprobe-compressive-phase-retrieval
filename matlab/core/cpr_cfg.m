@@ -16,10 +16,22 @@ c.ratio      = 0.3;         % sampling ratio m/n (phaseless IS/RS; circular and 
 %   phaseless: one reading gives K time samples of |sum of tones|^2 (amplitude used)
 c.rnRS       = 1/16;        % RS installed-probe fraction r_n
 c.rnRC       = 1/2;         % RC installed-probe fraction r_n
-c.nlegs      = 8;           % IC/RC leg probes (theta rows nw-nlegs+1..nw, next phi rotation)
-c.cableMaxCm = 50;          % cable lengths ~ U(0, cableMaxCm) cm, phase 2*pi*L/lambda: unmatched but calibrated
+c.nlegs      = 0;           % leg probes (IC/RC: S.nlegsCircular, set below)
+c.legDir     = 'phi';       % 'phi': leg q sits at the anchor row (theta = 90 deg) of the rotation q steps ahead
+                            %   (as in the full-wave model); 'theta': legs at theta rows nw-nlegs+1..nw of the next rotation
+c.cableMaxCm = 50;          % cable lengths ~ U(0, cableMaxCm) cm, drawn at random on purpose and then fixed;
+                            %   phase 2*pi*L/lambda per tone; calibrated (0 = phase-matched cables)
 c.snrdB      = 100;         % near-noiseless base; the SNR sweep varies it
-c.calErrDeg  = 0;           % cable calibration error (deg rms per port and tone; data use the true phases)
+c.calErrDeg  = 0;           % cable calibration error, rms phase at the band centre (deg; data use the true phases)
+c.calErrModel = 'length';   % 'length': a fixed length error per port (phase error grows with frequency);
+                            %   'tone': independent per port and tone (earlier versions)
+c.selfCal    = false;       % phaseless VSH runs: estimate a cable length correction per port during recovery
+c.selfCalStart = 2;         %   first EM update after which the calibration is re-estimated
+c.selfCalGN  = 5;           %   Gauss-Newton steps per re-estimation
+c.selfCalPriorDeg = NaN;    %   expected rms calibration error (deg at the band centre) for a MAP prior; NaN: none
+c.jitterPs   = 0;           % phaseless: rms error of the detector sample times (ps), random per sample, in the data
+                            %   only (the solver assumes the nominal times); a fixed offset would be a common delay
+c.sparsePrior = true;       % false: band-limit-only ablation, a Gaussian prior on every coefficient (rate 1)
 c.weights    = 'switch';    % 'switch' (on/off, the paper's system) | 'gauss' (benchmark: each active probe
 %                             also gets a CN(0,1) weight, as an attenuator and phase shifter would give;
 %                             drawn from a separate random stream, so probes, tones and times match the
@@ -31,6 +43,9 @@ c.nd         = S.nd;        % wavelengths (50 MHz steps)
 c.f0idx      = 1;           % first frequency index (1 -> 1.90 GHz)
 
 % ---- sparse basis: 2D DFT over angle x (DCT or DFT) along wavelength, with delay ---------------
+c.angBasis   = S.angBasis;  % angular basis: 'vsh' (far-field vector spherical harmonics up to degree vshL;
+                            %   the truth is the exact pattern at the scan points) | 'dft' (2D DFT over the grid)
+c.vshL       = S.vshL;      % maximum degree of the 'vsh' basis
 c.basis      = 'dct';       % 'dct' | 'dft'
 c.gauge      = true;        % re-choose the representation between EM rounds:
 %   phaseless K=1 : per-wavelength phase (unobservable) -> neighbor alignment
@@ -46,7 +61,8 @@ c.nitGAMP    = S.nitGAMP(1);         % GAMP iterations per update
 c.solverSNRdB = S.solverSNR(1);      % accept a restart if its residual is below -(solverSNRdB + 2) dB
 c.stopDB     = NaN;         % explicit acceptance target in dB; NaN: -(solverSNRdB + 2)
 c.logRestarts = false;      % phaseless: score every restart (restart studies only)
-c.npol       = 1;           % polarizations recovered jointly (2: dual-polarized ports, two-scan comparison of Section VII)
+c.npol       = S.npol;      % polarizations recovered jointly (2: dual-polarized probes, both components)
+c.groupPrior = S.groupPrior; % phaseless sparsity prior: 'modesep' (structured, VSH basis) | 'none' (one rate)
 
 % ---- per-measurement-type and per-architecture bases -------------------------------------------
 meas = c.meas; arch = c.arch;
@@ -58,7 +74,7 @@ if strcmp(meas, 'complex')
     c.ratio = 0.08;         % sampling ratio
     c.nlegs = 0;            % complex measurements need no legs (no block-phase ambiguity)
 elseif any(strcmp(arch, {'IC', 'RC'}))
-    c.ratio = S.ratioCircular;  c.nlegs = 8;  c.K = 4;
+    c.ratio = S.ratioCircular;  c.nlegs = S.nlegsCircular;  c.K = 4;
     c.maxTry = S.restarts(2);  c.nitEM = S.nitEM(2);  c.nitGAMP = S.nitGAMP(2);
     c.solverSNRdB = S.solverSNR(2);
 end
@@ -67,5 +83,6 @@ for i = 1:2:numel(varargin)
     c.(varargin{i}) = varargin{i+1};
 end
 c.nh = c.nw/2;
+if ~strcmp(c.angBasis, 'vsh'), c.groupPrior = 'none'; end   % the structured prior is defined on VSH modes
 c.K = min(c.K, c.nd);
 end
