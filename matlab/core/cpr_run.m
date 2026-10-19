@@ -8,7 +8,8 @@ if strcmp(c.angBasis, 'vsh') || c.npol > 1
     % exact pattern at the scan points (VSH fit of the openEMS data, degree 16), both components if
     % npol = 2, recovered with the basis c.angBasis through cpr_run_pattern: the shared-coefficient VSH
     % basis, or (DFT with npol = 2, the basis comparison) a 2D DFT per polarization slice
-    [X, f] = pattern_crlh_vsh(c.nw, c.nd, c.f0idx, 16, c.npol);
+    pat = 'crlh'; Lf = 16; if isfield(c, 'pattern'), pat = c.pattern; Lf = c.patternLfit; end   % example antenna
+    [X, f] = pattern_crlh_vsh(c.nw, c.nd, c.f0idx, Lf, c.npol, pat);
     r = cpr_run_pattern(c, seed, X, f);
     if c.npol > 1, r.scoreComp = r.score; r.score = r.scoreVec; end   % vector score is the main one
     return

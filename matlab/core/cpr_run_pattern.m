@@ -43,7 +43,11 @@ switch c.meas
             % self-calibration: after each EM update from c.selfCalStart on, re-estimate one cable length
             % correction per port from the current (in-span) pattern, re-phase the solver's matrix, then
             % apply the usual re-expression. Every restart starts from the assumed calibration.
-            calD = zeros(S.ent.nPorts, 1); calCalls = 0; calLog = [];
+            calD = zeros(S.ent.nPorts, 1); calG = calD; calCalls = 0; calLog = [];
+            calOpts = struct('model', 'length', 'gain', false, 'Lcal', S.L(:));
+            if isfield(c, 'selfCalModel'), calOpts.model = c.selfCalModel; end
+            if isfield(c, 'selfCalGain'), calOpts.gain = c.selfCalGain; end
+            if isfield(c, 'selfCalPriorGainDb'), calOpts.sigG = c.selfCalPriorGainDb/20*log(10); end
             gauge0 = []; if isfield(o, 'gauge'), gauge0 = o.gauge; end
             reset0 = o.reset;
             o.reset = @calReset;
@@ -51,7 +55,7 @@ switch c.meas
         end
         [xh, info] = feval(c.solver, y, A, o);
         if selfCal
-            info.selfCal = cal_score(calD, S, f, calLog);
+            info.selfCal = cal_score(calD, S, f, calLog, calG);
         end
 end
 r.cfg = c; r.seed = seed; r.time = toc(t0);
@@ -61,7 +65,7 @@ r.info = info; r.R = S.R; r.m = S.m; r.n = S.n;
 if isempty(xh), r.Xh = []; else, r.Xh = reshape(xh, size(X)); end
 
     function calReset()
-        calD = zeros(S.ent.nPorts, 1); calCalls = 0; calLog = [];
+        calD = zeros(S.ent.nPorts, 1); calG = calD; calCalls = 0; calLog = [];
         A.setPhi(PhiSolver);
         reset0();
     end
@@ -70,7 +74,8 @@ if isempty(xh), r.Xh = []; else, r.Xh = reshape(xh, size(X)); end
         calCalls = calCalls + 1;
         if calCalls >= c.selfCalStart
             sigL = c.selfCalPriorDeg / 360 * (299792458 / mean(f) * 100);   % cm at the band centre
-            [Phi1, calD, ci] = cpr_selfcal(S.ent, A.syn(est.xhat), y, S.lam, calD, c.selfCalGN, sigL);
+            calOpts.g = calG;
+            [Phi1, calD, ci, calG] = cpr_selfcal(S.ent, A.syn(est.xhat), y, S.lam, calD, c.selfCalGN, sigL, calOpts);
             A.setPhi(Phi1);
             calLog = [calLog; ci.res0_dB, ci.res_dB]; %#ok<AGROW>
         end
@@ -78,10 +83,15 @@ if isempty(xh), r.Xh = []; else, r.Xh = reshape(xh, size(X)); end
     end
 end
 
-function s = cal_score(d, S, f, calLog)
+function s = cal_score(d, S, f, calLog, g)
 % error of the estimated length corrections (cm, and rms phase at the band centre in degrees), with the
-% common length removed from both
+% common length removed from both; gain: rms error of the log-amplitudes in dB, common gain removed
 s.d = d; s.log = calLog;
+s.g = g; s.rmsGainTrueDb = NaN; s.rmsGainErrDb = NaN;
+if isfield(S, 'gTrue') && ~isempty(S.gTrue) && any(S.gTrue)
+    gt = S.gTrue - mean(S.gTrue); s.rmsGainTrueDb = 20/log(10) * rms(gt);
+    s.rmsGainErrDb = 20/log(10) * rms(gt - (g - mean(g)));
+end
 if isempty(S.dLtrue), s.rmsErrDeg = NaN; s.rmsTrueDeg = NaN; return, end
 lamC = 299792458 / mean(f) * 100;
 t = S.dLtrue - mean(S.dLtrue);

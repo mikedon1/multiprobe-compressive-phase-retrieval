@@ -29,8 +29,18 @@ c.selfCal    = false;       % phaseless VSH runs: estimate a cable length correc
 c.selfCalStart = 2;         %   first EM update after which the calibration is re-estimated
 c.selfCalGN  = 5;           %   Gauss-Newton steps per re-estimation
 c.selfCalPriorDeg = NaN;    %   expected rms calibration error (deg at the band centre) for a MAP prior; NaN: none
+c.selfCalModel = 'length';  %   'length': one length per port | 'drift': one fractional length change for all cables
+c.selfCalGain = false;      %   also estimate one gain per port
+c.selfCalPriorGainDb = NaN; %   expected rms gain error (dB) for its MAP prior; NaN: none
+c.calGainDb  = 0;           % fixed gain error per port in the data, rms dB (0 = none)
 c.jitterPs   = 0;           % phaseless: rms error of the detector sample times (ps), random per sample, in the data
                             %   only (the solver assumes the nominal times); a fixed offset would be a common delay
+c.icShift    = 1;           % IC calibration step: theta samples the ring is turned for part of the readings
+c.icShiftFrac = 0;          %   fraction of the readings taken with the turned ring (0 = plain IC)
+c.icShiftMode = 'perRot';   %   'perRot': last fraction of every rotation's readings; 'end': last fraction of all
+                            %   readings (one turn of the ring at the end of the scan)
+c.toneSpan   = Inf;         % phaseless: each reading draws its K tones from a window of toneSpan adjacent frequency
+                            %   bins at a random position (detector bandwidth (toneSpan - 1)*df); Inf = whole band
 c.sparsePrior = true;       % false: band-limit-only ablation, a Gaussian prior on every coefficient (rate 1)
 c.weights    = 'switch';    % 'switch' (on/off, the paper's system) | 'gauss' (benchmark: each active probe
 %                             also gets a CN(0,1) weight, as an attenuator and phase shifter would give;
@@ -41,6 +51,9 @@ c.weights    = 'switch';    % 'switch' (on/off, the paper's system) | 'gauss' (b
 c.nw         = S.nw;        % theta samples, 0-360 deg (nh = nw/2 phi samples, 0-180 deg)
 c.nd         = S.nd;        % wavelengths (50 MHz steps)
 c.f0idx      = 1;           % first frequency index (1 -> 1.90 GHz)
+c.pattern    = 'crlh';      % example antenna: 'crlh' | 'array4' / 'array5' (array_data: n x n dipole array, 6 cm
+                            %   spacing, the electrically larger second example, 2026-10-19)
+c.patternLfit = 16;         % degree of the spherical-wave fit that defines the exact truth (30 for the arrays)
 
 % ---- sparse basis: 2D DFT over angle x (DCT or DFT) along wavelength, with delay ---------------
 c.angBasis   = S.angBasis;  % angular basis: 'vsh' (far-field vector spherical harmonics up to degree vshL;

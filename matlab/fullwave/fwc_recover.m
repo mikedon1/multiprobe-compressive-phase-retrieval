@@ -47,6 +47,12 @@ r.nmse.perfreqPhase = score(D.aTrue, ah, 'phase');
 r.nmse.globalPhase = score(D.aTrue(:), ah(:), 'phase');   % one phase for all frequencies (2026-10-19)
 r.nmse.globalScale = score(D.aTrue(:), ah(:), 'scale');   % one complex factor for all frequencies
 [~, r.perfreqFactor] = score(D.aTrue, ah, 'scale');      % fitted factor per frequency (smooth in f? Sec. VII)
+% one complex constant and one delay for all frequencies: the validation's per-frequency factor is a constant
+% (~sqrt(50)) times a delay to within 0.46 dB / 2.1 deg rms (kappa_check, 2026-10-19), and a common delay is
+% absorbed by the recovery anyway, so this score also tests the phase between frequencies
+ph = unwrap(angle(r.perfreqFactor)); p = polyfit(D.f(:).' - D.f(1), ph, 1);
+ahD = ah .* exp(1i * polyval(p, D.f(:).' - D.f(1)));
+r.nmse.globalDelay = score(D.aTrue(:), ahD(:), 'scale');
 Xm = reshape(A.probes(D.aTrue(:)), np*nrot, nf); Xd = reshape(D.Xring, np*nrot, nf);
 r.nmse.model = score(Xd, Xm, 'scale');
 end

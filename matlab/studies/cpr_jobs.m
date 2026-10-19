@@ -134,6 +134,59 @@ switch tok{2}
                     'nitEM',30,'selfCalPriorDeg',e}], sw);
             end
         end
+    case 'caldrift'
+        % NOT queued (ask): thermal drift (every cable longer by the same fraction) in the data, IC, 30 EM updates:
+        % no self-calibration, per-port self-calibration, and the one-parameter drift self-calibration
+        for e = S.sweeps.calErr.IC
+            dr = {'arch','IC','calErrDeg',e,'calErrModel','drift','nitEM',30};
+            J = add(J, study, sprintf('IC_drift%g_em30', e), [meas cap dr], sw);
+            J = add(J, study, sprintf('IC_drift%g_sclen', e), [meas cap dr {'selfCal',true,'selfCalPriorDeg',e}], sw);
+            J = add(J, study, sprintf('IC_drift%g_scdrift', e), [meas cap dr {'selfCal',true,'selfCalModel','drift'}], sw);
+        end
+    case 'calgain'
+        % NOT queued (ask): gain errors per port (0.1-1 dB rms) plus 5 deg length errors, two-pass IC, 30 EM updates:
+        % self-calibration of lengths only vs lengths and gains
+        for gdb = [0.1 0.2 0.5 1]
+            cg = {'arch','IC','icShiftFrac',1/2,'calErrDeg',5,'calGainDb',gdb,'nitEM',30,'selfCal',true,'selfCalPriorDeg',5};
+            J = add(J, study, sprintf('ICS_gain%g_sclen', gdb), [meas cap cg], sw);
+            J = add(J, study, sprintf('ICS_gain%g_scgain', gdb), [meas cap cg {'selfCalGain',true,'selfCalPriorGainDb',gdb}], sw);
+        end
+    case 'aut2'
+        % NOT queued (ask the user): the electrically larger second example antenna (array_data). 4 x 4 array
+        % (k r0 = 7.3) on the paper grid with L = 16, IS and IC over the ratio grid; 5 x 5 array (k r0 = 9.7) with
+        % L = 20 on the 64 x 32 grid (the margin holds) and on the 32 x 16 grid (2L+1 > 32, the margin vanishes)
+        a4 = {'pattern','array4','patternLfit',30,'vshL',16};
+        for a = {'IS', 'IC'}, for rt = S.sweeps.ratio
+            J = add(J, study, sprintf('%s_array4_r%.2f', a{1}, rt), [meas a4 {'arch',a{1},'ratio',rt}], sw);
+        end, end
+        a5 = {'pattern','array5','patternLfit',30,'vshL',20};
+        for a = {'IS', 'IC'}, for g = [32 64]
+            J = add(J, study, sprintf('%s_array5_nw%d', a{1}, g), [meas cap a5 {'arch',a{1},'nw',g}], sw);
+        end, end
+    case 'tonespan'
+        % tone window (user, 2026-10-19, item 4c): K = 4 tones from a window of toneSpan adjacent bins (detector
+        % bandwidth (span - 1) x 50 MHz: 150/250/350/550 MHz; 16 = the whole band, 750 MHz, as in every other study), IS and IC at the base values,
+        % and the same with 30 ps timing jitter (cap 3: jitter runs cannot reach the target)
+        for a = {'IS', 'IC'}
+            for sp = [4 6 8 12 16]
+                J = add(J, study, sprintf('%s_span%d', a{1}, sp), [meas {'arch',a{1},'toneSpan',sp}], sw);
+            end
+            for sp = [4 16]
+                J = add(J, study, sprintf('%s_span%d_jit30', a{1}, sp), [meas cap {'arch',a{1},'toneSpan',sp,'jitterPs',30}], sw);
+            end
+        end
+    case 'calerrics'
+        % two-pass IC (user, 2026-10-19): one full phi rotation with half the readings, turn the arch one theta step,
+        % a second full phi rotation with the other half (icShiftFrac 1/2: half of every rotation's readings use the
+        % turned ring). Every cable-length error is visible (ic_shift_observability.m). With and without
+        % self-calibration over the cable-error grid, and one point without errors (same accuracy as plain IC?)
+        ics = {'arch','IC','icShiftFrac',1/2};
+        J = add(J, study, 'ICS_cal0', [meas ics], sw);
+        for e = S.sweeps.calErr.IC
+            J = add(J, study, sprintf('ICS_cal%g_em30', e), [meas cap ics {'calErrDeg',e,'nitEM',30}], sw);
+            J = add(J, study, sprintf('ICS_cal%g_sc', e), [meas cap ics {'calErrDeg',e, ...
+                'selfCal',true,'nitEM',30,'selfCalPriorDeg',e}], sw);
+        end
     case 'icbad'
         % Fig. 3(c) (user, 2026-10-19): IC with the 2D Fourier basis and no legs at the paper's settings (32 x 16,
         % both components, m/n 0.3, plain prior), keeping the recovered pattern. It fails by design (the block-
