@@ -1,0 +1,36 @@
+function T = fwc_run_trials(seeds, varargin)
+%FWC_RUN_TRIALS  Section VII trials on the full-arc HFSS data with embedded-probe calibration (2026-10-19).
+%   T = fwc_run_trials(1:10)                         IC, m/n 0.3, 50 dB SNR (the paper's Section VII)
+%   T = fwc_run_trials(1, 'maxTry', 1, 'nitEM', 2)   extra name/value pairs override cpr_cfg
+%   T = fwc_run_trials(1:10, 'Validation', V)        reuse a fwc_validate_hfss result instead of recomputing it
+% Data: fwc_validate_hfss() (Solve A modes, Solve B embedded responses of every port with near-field data, the
+% measured AUT->probe responses of the 32 rotations, ports in map order). Each trial: fwc_recover (on/off
+% switches, P ports, K tones, random cables, noise, PR-GAMP with the calibrated operator). Scores per trial:
+% perfreqScale (main), perfreqPhase, globalPhase, globalScale, globalDelay (one constant + one delay), model.
+% Saves <results>/fwc_trials.mat (T: one entry per seed) and prints a summary (mean of dB, best, worst).
+p = inputParser; p.KeepUnmatched = true; p.addParameter('Validation', []); p.parse(varargin{:});
+over = struct2nv(p.Unmatched);
+V = p.Results.Validation; if isempty(V), V = fwc_validate_hfss(); end
+D = struct('Xring', V.Smeas, 'R', V.R, 'modes', V.A.modes, 'psi', V.psi(:).' * pi/180, 'f', V.freq(:).', ...
+    'aTrue', V.A.a);
+c = cpr_cfg('arch', 'IC', 'snrdB', 50, over{:});
+fprintf('Section VII trials: %d ports x %d rotations x %d frequencies, m/n %.2f, SNR %d dB, P %d, K %d\n', ...
+    size(D.Xring, 1), size(D.Xring, 2), size(D.Xring, 3), c.ratio, c.snrdB, c.P, c.K);
+T = struct('seed', {}, 'nmse', {}, 'time', {}, 'numTry', {}, 'aHat', {}, 'perfreqFactor', {});
+for s = seeds
+    r = fwc_recover(c, s, D);
+    T(end+1) = struct('seed', s, 'nmse', r.nmse, 'time', r.time, 'numTry', r.info.numTry, 'aHat', r.aHat, ...
+        'perfreqFactor', r.perfreqFactor); %#ok<AGROW>
+    fprintf('  seed %2d: per-frequency %.1f dB, constant+delay %.1f dB, global phase %.1f dB, %d tries, %.0f s\n', ...
+        s, r.nmse.perfreqScale, r.nmse.globalDelay, r.nmse.globalPhase, r.info.numTry, r.time);
+end
+v = arrayfun(@(t) t.nmse.perfreqScale, T); g = arrayfun(@(t) t.nmse.globalDelay, T);
+fprintf('per-frequency score: mean %.1f dB, best %.1f, worst %.1f; constant+delay: mean %.1f, best %.1f, worst %.1f\n', ...
+    mean(v), min(v), max(v), mean(g), min(g), max(g));
+save(fullfile(cpr_paths().results, 'fwc_trials.mat'), 'T', 'c');
+end
+
+function nv = struct2nv(s)
+f = fieldnames(s); nv = cell(1, 2*numel(f));
+for i = 1:numel(f), nv{2*i-1} = f{i}; nv{2*i} = s.(f{i}); end
+end

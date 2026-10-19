@@ -82,7 +82,17 @@ switch c.arch
         else
             legRow = (nw - nl + 1 : nw).'; legOff = ones(nl, 1);   % theta column of the next rotation
         end
-        angOf = @(r, idx) ring_leg_ang(r, idx, c.arch, pos0, ntx, legRow, legOff, perRot, nw, nh);
+        % IC with a theta-stepped ring for calibration (2026-10-19): the last fraction icShiftFrac of the readings of
+        % every rotation are taken with the ring turned by icShift theta samples (an arch offset, as in StarLab), so
+        % each port sees two directions; default 0 = plain IC
+        % c.icShiftMode 'perRot' (default): the last fraction of EVERY rotation's readings (ring out and back at each
+        % phi); 'end': the last fraction of ALL readings (scan normally, turn the ring once, finish the scan)
+        sh = [0 0 0];
+        if isfield(c, 'icShiftFrac') && c.icShiftFrac > 0
+            if isfield(c, 'icShiftMode') && strcmp(c.icShiftMode, 'end'), sh = [c.icShift, round(c.icShiftFrac*R), 1];
+            else, sh = [c.icShift, round(c.icShiftFrac*perRot), 0]; end
+        end
+        angOf = @(r, idx) ring_leg_ang(r, idx, c.arch, pos0, ntx, legRow, legOff, perRot, nw, nh, sh);
     otherwise
         error('make_readings: unknown arch %s', c.arch);
 end
@@ -104,19 +114,35 @@ if gauss, gs = RandStream('mt19937ar', 'Seed', seed + 7919); end   % separate st
 % phase error 2*pi*dL_p/lambda_k is fixed per port and grows with frequency; dL_p ~ N(0, sigma_L^2) with
 % sigma_L set so that the rms phase error at the band centre is calErrDeg. 'tone' (earlier versions):
 % independent N(0, calErrDeg^2) per port and tone. Separate stream, so all other draws are unchanged.
-calErr = isfield(c, 'calErrDeg') && c.calErrDeg > 0;
+% 'drift' (2026-10-19): a thermal drift, every cable longer by the same FRACTION, dL_p = a*L_p, with a scaled so
+% that the rms phase error over the ports at the band centre is calErrDeg (random sign).
+% c.calGainDb > 0 (2026-10-19): also a fixed gain error per port, N(0, calGainDb^2) in dB, the same at every tone
+% (cable/switch loss), from its own stream so the length draws are unchanged.
+phDeg = 0; if isfield(c, 'calErrDeg'), phDeg = c.calErrDeg; end
+gDb = 0; if isfield(c, 'calGainDb'), gDb = c.calGainDb; end
+calErr = phDeg > 0 || gDb > 0;
 if calErr
     es = RandStream('mt19937ar', 'Seed', seed + 104729);
     mdl = 'length'; if isfield(c, 'calErrModel'), mdl = c.calErrModel; end
+    lamC = 299792458 / mean(f) * 100;                                         % band-centre wavelength (cm)
     switch mdl
         case 'length'
-            lamC = 299792458 / mean(f) * 100;                                 % band-centre wavelength (cm)
-            dL = (c.calErrDeg/360) * lamC * randn(es, nPool*npol, 1);         % cm, one per port
+            dL = (phDeg/360) * lamC * randn(es, nPool*npol, 1);               % cm, one per port
             E = exp(1i*2*pi*dL ./ lam);                                       % true / assumed, port x tone
+        case 'drift'
+            Lp = L(:); a = sign(randn(es)) * (phDeg/360) * lamC / rms(Lp);    % fractional length change
+            dL = a * Lp;
+            E = exp(1i*2*pi*dL ./ lam);
         case 'tone'
-            E = exp(1i*(c.calErrDeg*pi/180)*randn(es, nPool*npol, nd));       % true / assumed, per port and tone
+            E = exp(1i*(phDeg*pi/180)*randn(es, nPool*npol, nd));             % true / assumed, per port and tone
         otherwise
             error('make_readings: unknown calErrModel %s', mdl);
+    end
+    gTrue = zeros(nPool*npol, 1);
+    if gDb > 0
+        gsr = RandStream('mt19937ar', 'Seed', seed + 104743);
+        gTrue = (gDb/20) * log(10) * randn(gsr, nPool*npol, 1);              % natural-log amplitude per port
+        E = E .* exp(gTrue);
     end
 end
 % timing jitter: the detector samples at t + dt (dt ~ N(0, jitterPs^2), independent per sample) while the
@@ -124,16 +150,27 @@ end
 jit = phaseless && isfield(c, 'jitterPs') && c.jitterPs > 0;
 if jit, js = RandStream('mt19937ar', 'Seed', seed + 15485863); end
 mism = calErr || jit;                                     % data and solver matrices differ
+% tone window (2026-10-19): each reading draws its K tones from a window of span adjacent frequency bins at a
+% random position, so the detector only sees beats up to (span - 1)*df. span >= nd (default) = the whole band.
+span = nd; if isfield(c, 'toneSpan'), span = min(c.toneSpan, nd); end
+if span < nd && ~phaseless, error('make_readings: toneSpan is implemented for phaseless readings only'); end
 if mism, VA = complex(V); end
 for r = 1:R
     idx = randperm(nPool*npol, P).';                      % active ports
     pr = mod(idx - 1, nPool) + 1; q = floor((idx - 1)/nPool) + 1;   % probe, polarization
     a = angOf(r, pr);                                     % P x 1 grid points
-    tones = sort(randperm(nd, K));
-    W = exp(1i*2*pi*L(sub2ind(size(L), pr, q)) ./ lam(tones));   % P x K cable phases
+    if span < nd                                          % tone window (span adjacent bins, may overhang the
+        s0 = randi(span + nd - 1) - span + 1;             %   band edges so every frequency is covered equally;
+        win = max(1, s0):min(nd, s0 + span - 1);          %   out-of-band tones are dropped)
+        tones = sort(win(randperm(numel(win), min(K, numel(win)))));
+    else
+        tones = sort(randperm(nd, K));
+    end
+    nt = numel(tones);                                    % tones in this reading (K except near the edges)
+    W = exp(1i*2*pi*L(sub2ind(size(L), pr, q)) ./ lam(tones));   % P x nt cable phases
     if gauss, W = W .* ((randn(gs, P, 1) + 1i*randn(gs, P, 1)) / sqrt(2)); end   % CN(0,1), same for all tones
     cols = a + (tones - 1)*n2 + (q - 1)*nd*n2;            % P x K pattern columns
-    if calErr, Et = E(idx, tones); else, Et = ones(P, K); end   % true/assumed phase, P x K
+    if calErr, Et = E(idx, tones); else, Et = ones(P, nt); end   % true/assumed phase, P x nt
     if ~phaseless
         for q = 1:K
             row = row + 1;
@@ -143,19 +180,19 @@ for r = 1:R
             ptr = ptr + P; rowTone(row) = tones(q);
         end
     else
-        psi = 2*pi*rand(1, K);
+        psi = 2*pi*rand(1, nt);
         t = rand(K, 1) / df;                              % K time samples in one envelope period
         tT = t; if jit, tT = t + c.jitterPs*1e-12*randn(js, K, 1); end   % true sample times
         for q = 1:K
             row = row + 1;
-            ph = exp(1i*(2*pi*(f(tones) - f(1))*t(q) + psi));   % 1 x K (assumed)
+            ph = exp(1i*(2*pi*(f(tones) - f(1))*t(q) + psi));   % 1 x nt (assumed)
             Wq = W .* ph;
             WqT = Wq .* Et;
             if jit, WqT = W .* exp(1i*(2*pi*(f(tones) - f(1))*tT(q) + psi)) .* Et; end
-            I(ptr+(1:P*K)) = row; J(ptr+(1:P*K)) = cols(:); V(ptr+(1:P*K)) = WqT(:);
-            EP(ptr+(1:P*K)) = repmat(idx, K, 1); ET(ptr+(1:P*K)) = reshape(repmat(tones, P, 1), [], 1);
-            if mism, VA(ptr+(1:P*K)) = Wq(:); end
-            ptr = ptr + P*K;
+            I(ptr+(1:P*nt)) = row; J(ptr+(1:P*nt)) = cols(:); V(ptr+(1:P*nt)) = WqT(:);
+            EP(ptr+(1:P*nt)) = repmat(idx, nt, 1); ET(ptr+(1:P*nt)) = reshape(repmat(tones, P, 1), [], 1);
+            if mism, VA(ptr+(1:P*nt)) = Wq(:); end
+            ptr = ptr + P*nt;
             if K == 1, rowTone(row) = tones; end
         end
     end
@@ -168,17 +205,23 @@ S.f = f; S.lam = lam; S.df = df; S.L = L;
 vA = V(1:ptr); if mism, vA = VA(1:ptr); end
 S.ent = struct('i', I(1:ptr), 'j', J(1:ptr), 'v', vA, 'port', EP(1:ptr), 'tone', ET(1:ptr), ...
     'nPorts', nPool*npol, 'm', mTot, 'n', n);
-S.dLtrue = []; if calErr && strcmp(mdl, 'length'), S.dLtrue = dL; end   % true length errors (cm), for scoring
+S.dLtrue = []; if calErr && any(strcmp(mdl, {'length', 'drift'})), S.dLtrue = dL; end   % true length errors (cm), for scoring
+S.gTrue = []; if calErr, S.gTrue = gTrue; end            % true log-amplitude errors per port (0 if no gain error)
 end
 
-function a = ring_leg_ang(r, idx, arch, pos0, ntx, legRow, legOff, perRot, nw, nh)
-% grid points seen by ring/leg probes idx at reading r (1-based)
+function a = ring_leg_ang(r, idx, arch, pos0, ntx, legRow, legOff, perRot, nw, nh, sh)
+% grid points seen by ring/leg probes idx at reading r (1-based); sh = [theta step, readings per rotation with
+% the stepped ring] (IC only)
 q = floor((r-1)/perRot);                                  % phi rotation 0..nh-1
 a = zeros(numel(idx), 1);
 isRing = idx <= ntx;
 ir = idx(isRing);
 if strcmp(arch, 'IC')
     th = pos0(ir);
+    if sh(2) > 0
+        if sh(3) == 1, turned = r > perRot*nh - sh(2); else, turned = mod(r-1, perRot) >= perRot - sh(2); end
+        if turned, th = mod(th - 1 + sh(1), nw) + 1; end
+    end
 else
     th = mod(pos0(ir) - 1 - (r-1), nw) + 1;               % ring steps one theta sample per reading
 end

@@ -1,4 +1,4 @@
-function [X, f] = pattern_crlh_vsh(nw, nd, f0idx, Lfit, npol)
+function [X, f] = pattern_crlh_vsh(nw, nd, f0idx, Lfit, npol, src)
 %PATTERN_CRLH_VSH  The CRLH pattern of pattern_crlh.m, evaluated exactly at the scan points.
 %   [X, f] = pattern_crlh_vsh(nw, nd, f0idx, Lfit, npol)
 % The openEMS far field (both components, 2-deg grid) is fitted with vector spherical harmonics
@@ -13,7 +13,14 @@ if nargin < 3, f0idx = 1; end
 if nargin < 4, Lfit = 16; end
 if nargin < 5, npol = 1; end
 nh = nw/2;
-D = crlh_data();
+% src (2026-10-19): 'crlh' (default) | 'array' (array_data, the electrically larger second example) | a struct
+% in the crlh_data format
+if nargin < 6 || isempty(src), src = 'crlh'; end
+if isstruct(src), D = src;
+elseif startsWith(src, 'array')                          % 'array' = 5 x 5, 'array4' = 4 x 4, ...
+    na = str2double(src(6:end)); if isnan(na), na = 5; end
+    D = array_data(na, na, 6, 20);
+else, D = crlh_data(); end
 [T, Pp] = ndgrid(D.theta(:), D.phi(1:end-1));            % source grid without the 360-deg column
 keep = sin(T(:)) > 1e-6;
 w = sqrt(sin(T(keep)));
