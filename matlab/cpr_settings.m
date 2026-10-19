@@ -18,38 +18,58 @@ if isempty(active), active = 'paper'; end
 
 % =============================================================================================
 % 1. PATTERN RESOLUTION AND FREQUENCIES
-S.nw = 64;            % theta samples over 0-360 deg; phi uses nw/2 samples over 0-180 deg
+S.nw = 32;            % theta samples over 0-360 deg; phi uses nw/2 samples over 0-180 deg
+                      %   (32 x 16 is near the mode-count Nyquist rate for vshL = 12, so m/n is a true
+                      %   compression ratio; the DFT basis of earlier versions used 64)
 S.nd = 16;            % number of wavelengths (50 MHz steps from 1.90 GHz; at most 32)
+S.angBasis = 'vsh';   % angular sparse basis: 'vsh' (far-field vector spherical harmonics, the exact pattern
+                      %   evaluated at the scan points) | 'dft' (2D DFT, earlier versions; needs leg probes)
+S.vshL = 12;          % truncation degree of the 'vsh' basis
+S.npol = 2;           % polarizations measured and recovered: 2 = dual-polarized probes (both tangential
+                      %   components, shared mode coefficients) | 1 = one component (S.component)
+S.nlegsCircular = 0;  % IC/RC leg probes: none are needed with the 'vsh' basis (the 'dft' basis needs about 8)
+S.groupPrior = 'modesep'; % phaseless sparsity prior: 'modesep' (structured: each coefficient's rate = a factor
+                      %   of its VSH mode, shared over frequency, times a factor of its frequency index; about
+                      %   +1 dB over one rate, pilot P1) | 'none' (one rate for all coefficients)
+S.component = 'across'; % recovered far-field component: 'across' (linear, across the scan circle, what a
+                      %   linearly polarized arch probe measures), 'along', or 'cprh' (circular, earlier versions)
+S.snrModel = 'detector'; % 'detector': fixed detector noise, SNR referred to one probe at one tone with the full
+                      %   transmit power (tones share the power); 'normalized': same per-row SNR for every configuration
 
 % 2. PHASE-RETRIEVAL SOLVER EFFORT   [spherical IS/RS , circular IC/RC]
-S.restarts  = [10 30];     % maximum random restarts (the solver stops at the first one that
+%    One setting for all architectures with the 'vsh' basis (test T8); the 'dft' basis of earlier
+%    versions used [10 30], [6 20], [200 1000], [40 48].
+S.restarts  = [10 10];     % maximum random restarts (the solver stops at the first one that
                            %   reaches its residual target, so easy runs use far fewer)
-S.nitEM     = [6 20];      % expectation-maximization updates per restart
-S.nitGAMP   = [200 1000];  % GAMP iterations per update
-S.solverSNR = [40 48];     % stopping setting SNR_s in dB (residual target -(SNR_s + 2) dB)
-S.ratioCircular = 0.6;     % sampling ratio m/n of the circular architectures (phaseless): they need more measurements
+S.nitEM     = [6 6];       % expectation-maximization updates per restart
+S.nitGAMP   = [200 200];   % GAMP iterations per update
+S.solverSNR = [40 40];     % stopping setting SNR_s in dB (residual target -(SNR_s + 2) dB)
+S.ratioCircular = 0.3;     % sampling ratio m/n of the circular architectures (phaseless). Same as IS/RS: with the 'vsh'
+                           %   basis all four perform alike (user, 2026-10-19); the 'dft' basis used 0.6
 
 % 3. NUMBER OF TRIALS (random seeds) PER POINT
 S.trials.sweep      = 1;   % points of the Section V sweeps and the supplementary sweeps
-S.trials.snrCircular = 3;  % IC and RC points of the SNR sweep (mean in dB over the trials)
+S.trials.snrCircular = 1;  % IC and RC points of the SNR sweep (1 like every sweep, user 2026-10-19; was 3)
 S.trials.nearfield  = 1;   % Section VII compressive phase retrieval runs
 S.trials.fullwave   = 10;  % Section VI full-wave trials
 
 % 4. SWEEP GRIDS (the x-axis values of each figure)
-S.sweeps.ratio  = [0.03 0.05 0.08 0.12 0.2 0.3 0.4 0.6 0.8];  % sampling ratio m/n
+S.sweeps.ratio  = [0.05 0.08 0.12 0.2 0.3 0.4 0.6 0.8 1.0];  % sampling ratio m/n (n = 32 x 16 x 16 x 2)
 S.sweeps.Pcs    = [1 2 4 8 16 32];      % active probes, complex measurements
 S.sweeps.Ppr    = [1 2 4 8 16];         % active probes, phaseless measurements
 S.sweeps.K      = [1 2 4 8 16];         % tones per reading
-S.sweeps.rnRS   = [1/32 1/16 1/8 1/4 1/2];   % installed-probe fraction, RS
+S.sweeps.rnRS   = [1/16 1/8 1/4 1/2 1];  % installed-probe fraction, RS (n_phi = 16: 1, 2, 4, 8, 16 probes per row;
+                                         %   1/32 would round to the same single probe as 1/16)
 S.sweeps.rnRC   = [1/16 1/8 1/4 1/2 1];     % installed-probe fraction, RC
 S.sweeps.ndCs   = [1 2 4 8 16 32];      % wavelengths, complex (joint vs one at a time)
 S.sweeps.ndPr   = [1 2 4 8 16];         % wavelengths, phaseless
 S.sweeps.snr    = [10 20 30 40 50 60 80];    % SNR in dB
 S.sweeps.legs   = [0 1 2 4 8 16];       % leg probes (IC, RC)
 S.sweeps.size   = [16 32 64 128];       % angular resolution nw
+S.sweeps.L      = [8 10 12 14 16];      % truncation degree of the 'vsh' basis (replaces the size sweep)
 S.sweeps.examples = struct('cs', [0.03 0.05 0.08 0.2], 'pr', [0.1 0.15 0.2 0.3 0.4]);   % pattern-cut examples
 S.sweeps.gaussRatio = [0.08 0.1 0.15 0.2 0.3];   % sampling ratios of the switches-vs-Gaussian-weights comparison (IS)
-S.sweeps.calErr = struct('IS', [1 2 5 10 20], 'IC', [2 5 10]);   % rms cable phase errors in degrees
+S.sweeps.calErr = struct('IS', [1 2 5 10 20], 'IC', [1 2 5 10 20]);   % same grid for both (user 2026-10-19)   % rms cable phase errors in degrees
 
 % 5. FULL-WAVE EXAMPLE (Section VI) AND NEAR-FIELD COMPARISON (Section VII)
 S.nearfield.snr         = 50;     % dB
@@ -81,7 +101,7 @@ if strcmp(active, 'quick')                          % ---- QUICK PRESET (overrid
     S.sweeps.ndCs = [1 2 4 8];   S.sweeps.ndPr = [1 2 4 8];
     S.sweeps.snr = [20 50 80];
     S.sweeps.legs = [0 4 8];
-    S.sweeps.size = [16 32];
+    S.sweeps.size = [16 32];   S.sweeps.L = [10 12];
     S.sweeps.examples = struct('cs', 0.2, 'pr', 0.3);   % one example per figure
     S.sweeps.gaussRatio = [0.2 0.3];
     S.sweeps.calErr = struct('IS', [2 10], 'IC', 5);
@@ -92,4 +112,5 @@ elseif ~strcmp(active, 'paper')
     error('cpr_settings: unknown preset "%s" (use ''paper'' or ''quick'')', active);
 end
 S.preset = active;
+if ~isempty(getenv('CPR_FIGAXES')), S.figures.axes = getenv('CPR_FIGAXES'); end   % 'auto' | 'paper' (session override)
 end

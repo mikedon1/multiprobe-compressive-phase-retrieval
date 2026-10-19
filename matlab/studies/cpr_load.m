@@ -16,4 +16,9 @@ for f = fs.'
 end, end
 T = cell2table(rows, 'VariableNames', {'label','seed','meas','arch','P','K','ratio','nw','nd', ...
     'snrdB','nlegs','rnRS','rnRC','raw','global','perlambda','time','R','m','weights','calErrDeg'});
+% a failed attempt (NaN) recorded in one worker file and rerun successfully in another (e.g. after a change of
+% the number of workers): keep only the successful record
+key = strcat(T.label, '|', string(T.seed));
+bad = isnan(T.raw) & ismember(key, key(~isnan(T.raw)));
+T(bad, :) = [];
 end

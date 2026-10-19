@@ -4,14 +4,23 @@ function r = cpr_run(c, seed)
 % Everything random (probe/tone draws, cable lengths, noise, solver
 % initializations) follows from rng(seed) in make_readings.m.
 cpr_setup();                                       % puts GAMPmatlab (main, phase) on the path
+if strcmp(c.angBasis, 'vsh') || c.npol > 1
+    % exact pattern at the scan points (VSH fit of the openEMS data, degree 16), both components if
+    % npol = 2, recovered with the basis c.angBasis through cpr_run_pattern: the shared-coefficient VSH
+    % basis, or (DFT with npol = 2, the basis comparison) a 2D DFT per polarization slice
+    [X, f] = pattern_crlh_vsh(c.nw, c.nd, c.f0idx, 16, c.npol);
+    r = cpr_run_pattern(c, seed, X, f);
+    if c.npol > 1, r.scoreComp = r.score; r.score = r.scoreVec; end   % vector score is the main one
+    return
+end
 [X, f] = pattern_crlh(c.nw, c.nd, c.f0idx);
 x = X(:);
 S = make_readings(c, f, seed);                     % calls rng(seed)
 z = S.Phi * x;
-wvar = 10^(-c.snrdB/10) * mean(abs(z).^2);
+wvar = cpr_noisevar(c, z, x);
 w = sqrt(wvar/2) * (randn(S.m, 2) * [1; 1i]);
 PhiSolver = S.Phi; if isfield(S, 'PhiA'), PhiSolver = S.PhiA; end   % calibration error: solver assumes calibrated phases
-A = SparseDftLinTrans(PhiSolver, c.nw, c.nh, c.nd, cpr_basis(c.basis, f, 0), c.sqMode);
+A = cpr_operator(c, PhiSolver, c.nw, c.nh, c.nd, cpr_basis(c.basis, f, 0));
 t0 = tic;
 switch c.meas
     case 'complex'

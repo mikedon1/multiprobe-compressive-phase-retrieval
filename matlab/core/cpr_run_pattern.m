@@ -14,9 +14,10 @@ if c.nd ~= numel(f), error('cpr_run_pattern: size(X,3) must be npol*numel(f)'); 
 x = X(:);
 S = make_readings(c, f, seed);
 z = S.Phi * x;
-wvar = 10^(-c.snrdB/10) * mean(abs(z).^2);
+wvar = cpr_noisevar(c, z, x);
 w = sqrt(wvar/2) * (randn(S.m, 2) * [1; 1i]);
-A = SparseDftLinTrans(S.Phi, c.nw, c.nh, ns, cpr_basis(c.basis, f, 0, c.npol), c.sqMode);
+PhiSolver = S.Phi; if isfield(S, 'PhiA'), PhiSolver = S.PhiA; end   % calibration error: solver assumes calibrated phases
+A = cpr_operator(c, PhiSolver, c.nw, c.nh, ns, cpr_basis(c.basis, f, 0, c.npol));
 t0 = tic;
 switch c.meas
     case 'complex'
@@ -27,26 +28,74 @@ switch c.meas
         o = struct('minTry', c.minTry, 'maxTry', c.maxTry, 'nitEM', c.nitEM, 'SNRdB', min(c.solverSNRdB, c.snrdB));
         if isfield(c, 'nitGAMP'), o.nitGAMP = c.nitGAMP; end
         if isfield(c, 'stopDB'), o.nresStopdB = c.stopDB; end
+        if isfield(c, 'verbose'), o.verbose = c.verbose; end
+        if isfield(c, 'groupPrior'), o.groupPrior = c.groupPrior; end
+        if isfield(c, 'sparsePrior'), o.sparsePrior = c.sparsePrior; end
         o.reset = @() A.setM(cpr_basis(c.basis, f, 0, c.npol));
         if c.gauge && c.nd > 1
             if c.K == 1, mode = 'perlambda'; else, mode = 'delay'; end
             o.gauge = @(e) cpr_gauge(e, A, mode, f, c.basis, S.rowTone);
         end
-        [xh, info] = feval(c.solver, abs(z + w), A, o);
+        if isfield(c, 'logRestarts') && c.logRestarts, o.scoreFn = @(xp) vec_score(X, xp, c.nd, c.npol); end
+        y = abs(z + w);
+        selfCal = isfield(c, 'selfCal') && c.selfCal;
+        if selfCal
+            % self-calibration: after each EM update from c.selfCalStart on, re-estimate one cable length
+            % correction per port from the current (in-span) pattern, re-phase the solver's matrix, then
+            % apply the usual re-expression. Every restart starts from the assumed calibration.
+            calD = zeros(S.ent.nPorts, 1); calCalls = 0; calLog = [];
+            gauge0 = []; if isfield(o, 'gauge'), gauge0 = o.gauge; end
+            reset0 = o.reset;
+            o.reset = @calReset;
+            o.gauge = @calHook;
+        end
+        [xh, info] = feval(c.solver, y, A, o);
+        if selfCal
+            info.selfCal = cal_score(calD, S, f, calLog);
+        end
 end
 r.cfg = c; r.seed = seed; r.time = toc(t0);
 r.score = cpr_score(X, xh, ns);
 r.scoreVec = vec_score(X, xh, c.nd, c.npol);
 r.info = info; r.R = S.R; r.m = S.m; r.n = S.n;
 if isempty(xh), r.Xh = []; else, r.Xh = reshape(xh, size(X)); end
+
+    function calReset()
+        calD = zeros(S.ent.nPorts, 1); calCalls = 0; calLog = [];
+        A.setPhi(PhiSolver);
+        reset0();
+    end
+
+    function est = calHook(est)
+        calCalls = calCalls + 1;
+        if calCalls >= c.selfCalStart
+            sigL = c.selfCalPriorDeg / 360 * (299792458 / mean(f) * 100);   % cm at the band centre
+            [Phi1, calD, ci] = cpr_selfcal(S.ent, A.syn(est.xhat), y, S.lam, calD, c.selfCalGN, sigL);
+            A.setPhi(Phi1);
+            calLog = [calLog; ci.res0_dB, ci.res_dB]; %#ok<AGROW>
+        end
+        if ~isempty(gauge0), est = gauge0(est); end
+    end
+end
+
+function s = cal_score(d, S, f, calLog)
+% error of the estimated length corrections (cm, and rms phase at the band centre in degrees), with the
+% common length removed from both
+s.d = d; s.log = calLog;
+if isempty(S.dLtrue), s.rmsErrDeg = NaN; s.rmsTrueDeg = NaN; return, end
+lamC = 299792458 / mean(f) * 100;
+t = S.dLtrue - mean(S.dLtrue);
+s.rmsTrueDeg = 360 * rms(t) / lamC;
+s.rmsErrDeg = 360 * rms(t - (d - mean(d))) / lamC;
 end
 
 function s = vec_score(X, xh, nd, npol)
 % NMSE of the full (all-polarization) pattern: one phase per wavelength shared by the
 % polarizations, and one global phase.
-if isempty(xh), s = struct('perlambda', NaN, 'global', NaN, 'each', NaN(1, nd)); return, end
+if isempty(xh), s = struct('raw', NaN, 'perlambda', NaN, 'global', NaN, 'each', NaN(1, nd)); return, end
 X = reshape(X, [], nd, npol); Xh = reshape(xh, [], nd, npol);
 nr = @(E) 20*log10(norm(E(:))/norm(X(:)));
+s.raw = nr(X - Xh);
 s.global = nr(X - Xh*exp(1i*angle(Xh(:)'*X(:))));
 s.each = zeros(1, nd);
 for k = 1:nd

@@ -36,6 +36,12 @@ switch part
         single(Fs, cpr_load('cs_size'), 'nw', 'raw', P('cs2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], [-50 0]);
     case 'fig6'                                    % only the NMSE-example figure (Fig. 6)
         examples(F, 'cs_examples', P('cs2_exmag'), P('cs2_exphase'));
+    case 'IVnd'                                    % only the phaseless n_lambda panel
+        F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
+        nd(F3, cpr_load('pr_nd'), P('pr2_nd'), [-46 -20]);
+    case 'IVP'                                     % only the phaseless P panel
+        F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
+        single(F3, cpr_load('pr_P'), 'P', 'metric', P('pr2_P'), 'active ports {\itP}', [1 2 4 8 16], []);
     case 'IV'
         % Section V panels: shorter (12 x 4.5 cm) for compact 2 x 2 figures; 11 pt text
         Fs = F; Fs.new = @() F.new(12, 4.5); Fs.save = @(f, file) F.save(f, file, 12, 4.5);
@@ -44,7 +50,7 @@ switch part
         F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
         T = tryload('pr_ratio'); if ~isempty(T), archs(F3, T, 'ratio', 'metric', P('pr2_ratio'), 'sampling ratio {\itm/n}', 'northeast', true, []); end
         if ~isempty(T), archs(F3, T(ismember(T.arch, {'IS', 'RS'}), :), 'ratio', 'metric', P('pr2_ratio_ISRS'), 'sampling ratio {\itm/n}', 'northeast', true, []); end
-        T = tryload('pr_P');     if ~isempty(T), single(F3, T, 'P', 'metric', P('pr2_P'), 'active probes {\itP}', [1 2 4 8 16], []); end
+        T = tryload('pr_P');     if ~isempty(T), single(F3, T, 'P', 'metric', P('pr2_P'), 'active ports {\itP}', [1 2 4 8 16], []); end
         T = tryload('pr_K');     if ~isempty(T), tones(F3, T, 'metric', P('pr2_K')); end
         T = tryload('pr_rn');    if ~isempty(T), rn(Fs, T, 'metric', P('pr2_rn'), []); end
         T = tryload('pr_nd');    if ~isempty(T), nd(F3, T, P('pr2_nd'), [-46 -20]); end
@@ -127,14 +133,20 @@ Tj = sortrows(T(j, :), 'nd'); Ts = T(s1, :); fi = cellfun(@(l) sscanf(l, 'single
 ys = metric(Ts, which);
 % "each alone": the pooled NMSE of the independently recovered wavelengths, i.e. their errors summed
 % and divided by the summed signal energy, the same aggregation as the joint NMSE
-Xe = pattern_crlh(Ts.nw(1), max(fi), 1); Ek = squeeze(sum(sum(abs(Xe).^2, 1), 2)); Ek = Ek(:);
+c0 = cpr_cfg();
+if strcmp(c0.angBasis, 'vsh')                      % the recovered (exact, possibly dual-polarized) pattern
+    Xe = pattern_crlh_vsh(Ts.nw(1), max(fi), 1, 16, c0.npol);
+    Ek = squeeze(sum(sum(abs(Xe).^2, 1), 2)); Ek = sum(reshape(Ek, max(fi), c0.npol), 2);
+else
+    Xe = pattern_crlh(Ts.nw(1), max(fi), 1); Ek = squeeze(sum(sum(abs(Xe).^2, 1), 2)); Ek = Ek(:);
+end
 yi = arrayfun(@(n) 10*log10(sum(10.^(ys(fi <= n)/10) .* Ek(fi(fi <= n))) / sum(Ek(fi(fi <= n)))), Tj.nd);
 f = F.new(); ax = axes(f); hold(ax, 'on');
 plot(ax, Tj.nd, metric(Tj, which), '-', 'Color', F.col.IS, 'LineWidth', F.lw);
 plot(ax, Tj.nd, yi, '--', 'Color', F.col.RS, 'LineWidth', F.lw);
 xt = Tj.nd.'; set(ax, 'XScale', 'log', 'XTick', xt); xlim(ax, [min(xt) max(xt)]); if ~isempty(yl) && F.paperAxes(), ylim(ax, yl); end
 xlabel(ax, 'wavelengths {\itn}_\lambda'); ylabel(ax, 'NMSE (dB)');
-loc = 'northeast'; if strcmp(which, 'metric'), loc = 'northwest'; end   % phaseless: the "each alone" curve ends top right
+loc = 'northeast'; if strcmp(which, 'metric'), loc = 'north'; end   % phaseless: both curves start top left and "each alone" ends top right
 legend(ax, {'joint', 'each alone'}, 'Location', loc); F.style(ax); F.save(f, file);
 end
 

@@ -28,11 +28,18 @@ function [xhat, info] = cpr_prgamp(yAmp, A, opts)
 %   gauge      @(est) re-expression of the estimate after each EM update     ([])
 %   reset      @() called at the start of every restart                     ([])
 %   scoreFn    @(xpattern) score logged for every restart                    ([])
+%   verbose    print one progress line per restart                           (false)
+%   groupPrior structured sparsity rate (VSH basis, A.npol = 2, test 2026-10-18):  ('none')
+%              'pair'    one rate per (l, m, frequency-basis index): TE and TM share it
+%              'pairsep' rate = (l, m) group over all frequency indices x frequency-index factor
+%              'modesep' rate = mode group over all frequency indices x frequency-index factor
+%   sparsePrior false: band-limit-only ablation, Gaussian prior on every coefficient          (true)
 %
 % info: numTry (restarts run), nres_dB (best residual), time (s), log (per restart).
 
 def = struct('SNRdB', 10, 'stopDB', NaN, 'minTry', 1, 'maxTry', 10, 'nitEM', 20, ...
-    'nitGAMP', 200, 'gauge', [], 'reset', [], 'scoreFn', []);
+    'nitGAMP', 200, 'gauge', [], 'reset', [], 'scoreFn', [], 'verbose', false, 'groupPrior', 'none', ...
+    'sparsePrior', true);
 if nargin < 3, opts = struct(); end
 for f = fieldnames(def).'
     if ~isfield(opts, f{1}), opts.(f{1}) = def.(f{1}); end
@@ -46,11 +53,21 @@ target = -(snrS + 2);
 if ~isnan(opts.stopDB), target = opts.stopDB; end
 
 % ----- initial prior and noise parameters (Appendix B)
-P = init_params(yAmp, A, m, n, snrS);
+P = init_params(yAmp, A, m, n, snrS, opts.sparsePrior);
 
 % ----- prior and GAMP settings shared by all restarts
 coefEst = CAwgnEstimIn(zeros(n,1), P.v0, false, 'mean0Tune', false, 'autoTune', true);
-priorEst = SparseScaEstim(coefEst, P.rho0, 0, 'autoTune', true);
+if ~opts.sparsePrior
+    % band-limit-only ablation: rate 1 makes the Bernoulli-Gaussian prior a plain Gaussian on every
+    % coefficient (log(1 - p1) = -inf gives activity 1, and the EM update keeps p1 = 1); variance learned
+    priorEst = SparseScaEstim(coefEst, 1, 0, 'autoTune', true);
+elseif strcmp(opts.groupPrior, 'none')
+    priorEst = SparseScaEstim(coefEst, P.rho0, 0, 'autoTune', true);
+else
+    [grp, col, gmode] = group_labels(A, opts.groupPrior);
+    priorEst = GroupSparseScaEstim(coefEst, P.rho0, 0, grp, gmode, 'autoTune', true);
+    priorEst.cols = col;
+end
 gopt = gamp_settings(opts.nitGAMP);
 gain = 100;                                   % initial-estimate gain, raised after a failure
 
@@ -71,6 +88,10 @@ for t = 1:nTry
         if ~isempty(opts.scoreFn), entry.score = opts.scoreFn(xPat); end
         info.log(t) = entry;
         if nres < best.nres, best.nres = nres; best.x = xPat; end
+        if opts.verbose
+            fprintf('  restart %d/%d: residual %.1f dB (target %.1f), %.0f s  [%s]\n', ...
+                t, nTry, nres, target, entry.time, datestr(now));
+        end
         if t >= opts.minTry && best.nres < target, break; end
     catch err
         warning('cpr_prgamp:restart', 'restart %d failed: %s', t, err.message);
@@ -81,16 +102,43 @@ info.numTry = tryCount; info.nres_dB = best.nres; info.time = toc(tStart);
 end
 
 % -------------------------------------------------------------------------------------------
-function P = init_params(yAmp, A, m, n, snrS)
-% Sparsity rate: smallest k with m <= 2 k log2(n/k), capped at 0.9 n. Coefficient variance:
-% measured energy, scaled by the SNR, shared over rho*n active coefficients and ||A||_F^2.
+function P = init_params(yAmp, A, m, n, snrS, sparse)
+% Sparsity rate: smallest k with m <= 2 k log2(n/k), capped at 0.9 n (1 without the sparsity prior).
+% Coefficient variance: measured energy, scaled by the SNR, shared over rho*n active coefficients and ||A||_F^2.
 k = 1;
 while k < n && m > 2*k*log2(n/k), k = k + 1; end
 P.rho0 = min(k/n, 0.9);
+if ~sparse, P.rho0 = 1; end
 snrLin = 10^(snrS/10);
 P.v0 = (norm(yAmp)^2*snrLin/(snrLin+1)/P.rho0/sum(A.multSq(ones(n,1))))*ones(n,1);
 P.wvar0 = mean(abs(yAmp).^2)/(10 + 1);        % noise variance starts at 10 dB SNR
 P.tolMax = 1e-4;
+end
+
+function [grp, col, gmode] = group_labels(A, kind)
+% Coefficient s = reshape(p, nf): column j of the VSH basis (vsh_basis, degree order; with npol = 2
+% no column is dropped, so column j is mode j of vsh_eval up to the Gram-Schmidt mixing) times
+% frequency-basis index f.
+if ~(isa(A, 'VshLinTrans') || isa(A, 'CalVshLinTrans'))
+    error('cpr_prgamp: groupPrior needs a VSH operator (VshLinTrans or CalVshLinTrans)');
+end
+[J, F] = ndgrid(1:A.p, 1:A.nf);
+col = F(:);
+if strcmp(kind, 'modesep')                     % groups = basis columns: any npol
+    grp = J(:); gmode = 'sep'; return
+end
+if A.npol ~= 2 || A.p ~= 2*A.L*(A.L+2)          % (l, m) pairing needs the column = mode identity
+    error('cpr_prgamp: groupPrior %s needs the dual-polarized VSH operator with all 2L(L+2) columns', kind);
+end
+[~, ~, modes] = vsh_eval(A.L, 1, 0);
+[~, ~, lm] = unique(modes(:, 1:2), 'rows', 'stable');      % (l, m) index per column
+nlm = max(lm);
+switch kind
+    case 'pair',    grp = lm(J(:)) + nlm*(F(:) - 1); gmode = 'avg';
+    case 'pairsep', grp = lm(J(:));                  gmode = 'sep';
+    case 'modesep', grp = J(:);                      gmode = 'sep';
+    otherwise, error('cpr_prgamp: unknown groupPrior %s', kind);
+end
 end
 
 function g = gamp_settings(nit)

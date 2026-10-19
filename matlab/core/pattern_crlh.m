@@ -5,24 +5,35 @@ function [X, f] = pattern_crlh(nw, nd, f0idx)
 %
 % X is nw x nw/2 x nd complex (scan theta 0-360 deg, scan phi 0-180 deg), normalized so that
 % max|X| = 1, and f (1 x nd, Hz) are its frequencies, starting at frequency index f0idx
-% (50 MHz steps from 1.90 GHz). The data are the circular component
-% E_cprh = (E_theta + 1i*E_phi).*exp(1i*phi)/sqrt(2) of the openEMS far field in
-% data/crlh_far_field.mat. A scan angle theta > 180 deg is the direction
-% (360 - theta, phi + 180 deg), so each great circle through the poles is covered once.
+% (50 MHz steps from 1.90 GHz), from the openEMS far field in data/crlh_far_field.mat.
+% A scan angle theta > 180 deg is the direction (360 - theta, phi + 180 deg), so each great circle
+% through the poles is covered once. The component is set by cpr_settings().component:
+%   'across' (default): the linear component across the scan circle, i.e. what a linearly
+%            polarized probe on a measurement arch measures; it equals E_phi on the near half of
+%            each circle and -E_phi on the far half (the unit vector phi-hat reverses there)
+%   'along'  : the linear component along the circle (E_theta, sign reversed on the far half)
+%   'cprh'   : the circular component (E_theta + 1i*E_phi).*exp(1i*phi)/sqrt(2) (earlier versions)
 if nargin < 3, f0idx = 1; end
 D = crlh_data();
 nh = nw/2;
+comp = 'across'; S0 = cpr_settings(); if isfield(S0, 'component'), comp = S0.component; end
+switch comp
+    case 'across', src = D.E_phi;   sgn = -1;
+    case 'along',  src = D.E_theta; sgn = -1;
+    case 'cprh',   src = D.E_cprh;  sgn = 1;
+    otherwise, error('pattern_crlh: unknown component %s', comp);
+end
 [Th, Ph] = meshgrid(D.theta(1:end-1)*180/pi, D.phi*180/pi);   % 181 x 90 source grid (deg)
 [Xq, Yq] = meshgrid(0:180/nh:180 - 180/nh, 0:360/nw:360 - 360/nw);
 [nth, nph] = size(D.E_theta{1});                                  % 91 x 181
 X = zeros(nw, nh, nd);
 for t = 1:nd
     i = f0idx + t - 1;
-    Eu = circshift(D.E_cprh{i}(:, 1:end-1), 45, 2);               % 90-degree phi shift of the 180 unique
+    Eu = circshift(src{i}(:, 1:end-1), 45, 2);                    % 90-degree phi shift of the 180 unique
     E = [Eu, Eu(:, 1)];                                           %   columns (0-358 deg); 360 deg re-appended
     G = zeros(nph, nth - 1);                                      % 181 x 90: scan theta 0-360
     G(1:nth, 1:nth-1) = E(1:nth, 1:nth-1);
-    G(nth+1:nph, 1:nth-1) = flipud(E(1:nth-1, nth:nph-1));
+    G(nth+1:nph, 1:nth-1) = sgn * flipud(E(1:nth-1, nth:nph-1));  % far half of each circle
     X(:, :, t) = interp2(Th, Ph, G, Xq, Yq);
 end
 mX = abs(X); mX = mX / max(mX(:));                          % magnitude normalized, phase kept (as in the
