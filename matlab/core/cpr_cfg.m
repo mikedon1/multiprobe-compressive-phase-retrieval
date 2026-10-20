@@ -35,6 +35,7 @@ c.selfCalPriorGainDb = NaN; %   expected rms gain error (dB) for its MAP prior; 
 c.calGainDb  = 0;           % fixed gain error per port in the data, rms dB (0 = none)
 c.jitterPs   = 0;           % phaseless: rms error of the detector sample times (ps), random per sample, in the data
                             %   only (the solver assumes the nominal times); a fixed offset would be a common delay
+c.portRule   = 'random';    % 'random': P ports drawn at random per reading; 'pairs': deterministic pairs (P = 2), round-7 control
 c.icShift    = 1;           % IC calibration step: theta samples the ring is turned for part of the readings
 c.icShiftFrac = 0;          %   fraction of the readings taken with the turned ring (0 = plain IC)
 c.icShiftMode = 'perRot';   %   'perRot': last fraction of every rotation's readings; 'end': last fraction of all

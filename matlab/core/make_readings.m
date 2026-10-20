@@ -158,8 +158,19 @@ mism = calErr || jit;                                     % data and solver matr
 span = nd; if isfield(c, 'toneSpan'), span = min(c.toneSpan, nd); end
 if span < nd && ~phaseless, error('make_readings: toneSpan is implemented for phaseless readings only'); end
 if mism, VA = complex(V); end
+pairs = isfield(c, 'portRule') && strcmp(c.portRule, 'pairs');
+if pairs && P ~= 2, error('make_readings: portRule ''pairs'' needs P = 2'); end
 for r = 1:R
-    idx = randperm(nPool*npol, P).';                      % active ports
+    if pairs
+        % deterministic pairs (round 7 control, 2026-10-20), cycling three kinds so both polarizations are linked:
+        % pol-1 port of probe b with that of the next probe, the same for pol 2, and the two ports of probe b
+        b = mod(floor((r - 1)/3), nPool) + 1; nb = mod(b, nPool) + 1; kind = mod(r - 1, 3);
+        if kind == 0 || npol == 1, idx = [b; nb];
+        elseif kind == 1, idx = [b; nb] + nPool;
+        else, idx = [b; b + nPool]; end
+    else
+        idx = randperm(nPool*npol, P).';                  % active ports
+    end
     pr = mod(idx - 1, nPool) + 1; q = floor((idx - 1)/nPool) + 1;   % probe, polarization
     a = angOf(r, pr);                                     % P x 1 grid points
     if span < nd                                          % tone window (span adjacent bins, may overhang the
