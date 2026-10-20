@@ -39,6 +39,7 @@ c.icShift    = 1;           % IC calibration step: theta samples the ring is tur
 c.icShiftFrac = 0;          %   fraction of the readings taken with the turned ring (0 = plain IC)
 c.icShiftMode = 'perRot';   %   'perRot': last fraction of every rotation's readings; 'end': last fraction of all
                             %   readings (one turn of the ring at the end of the scan)
+c.combNorm   = 'unit';      % combiner: 'unit' (idealized buffered, unit branch transfers) | 'passive' (1/sqrt(P))
 c.toneSpan   = Inf;         % phaseless: each reading draws its K tones from a window of toneSpan adjacent frequency
                             %   bins at a random position (detector bandwidth (toneSpan - 1)*df); Inf = whole band
 c.sparsePrior = true;       % false: band-limit-only ablation, a Gaussian prior on every coefficient (rate 1)

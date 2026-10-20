@@ -61,6 +61,7 @@ end
 r.cfg = c; r.seed = seed; r.time = toc(t0);
 r.score = cpr_score(X, xh, ns);
 r.scoreVec = vec_score(X, xh, c.nd, c.npol);
+info.snrCombinedDb = 10*log10(mean(abs(z).^2) / wvar);   % realized SNR of the combined signals (round 7)
 r.info = info; r.R = S.R; r.m = S.m; r.n = S.n;
 if isempty(xh), r.Xh = []; else, r.Xh = reshape(xh, size(X)); end
 
