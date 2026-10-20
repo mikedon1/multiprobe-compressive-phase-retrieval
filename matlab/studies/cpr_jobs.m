@@ -134,6 +134,20 @@ switch tok{2}
                     'nitEM',30,'selfCalPriorDeg',e}], sw);
             end
         end
+    case 'trunc'
+        % robustness (user, 2026-10-19): truth NOT in the span of the recovery basis (the inverse-crime check).
+        % CRLH truth (degree-16 fit) recovered with L = 8 and 10 at m/n 0.3 and 0.6; the 5 x 5 array truth (degree-30
+        % fit, energy above degree 12 at -37 dB) recovered on 64 x 32 with L = 12 (truth -45 dB outside the span) and
+        % L = 16 (-83 dB). IS and IC.
+        for a = {'IS', 'IC'}
+            for L = [8 10], for rt = [0.3 0.6]
+                J = add(J, study, sprintf('%s_crlh_L%d_r%.1f', a{1}, L, rt), [meas {'arch',a{1},'vshL',L,'ratio',rt}], sw);
+            end, end
+            for L = [12 16]
+                J = add(J, study, sprintf('%s_array5_L%d', a{1}, L), [meas cap {'arch',a{1},'pattern','array5', ...
+                    'patternLfit',30,'vshL',L,'nw',64}], sw);
+            end
+        end
     case 'caldrift'
         % NOT queued (ask): thermal drift (every cable longer by the same fraction) in the data, IC, 30 EM updates:
         % no self-calibration, per-port self-calibration, and the one-parameter drift self-calibration
