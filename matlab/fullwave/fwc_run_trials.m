@@ -14,12 +14,17 @@ p.addParameter('PerturbAzDeg', 0);    % robustness (2026-10-19): rms azimuthal p
 p.addParameter('PerturbRelDb', -inf); % random complex error of every embedded-response entry, rms relative to the rms
                                       %   response of its port, dB (e.g. -40: the probe-equalization residual of [Varela 2024])
 p.addParameter('PerturbSeed', 1);
+p.addParameter('ProbeModel', 'embedded'); % 'embedded' (the paper) | 'free': ideal point probes, no coupling (fwc_free_resp)
 p.parse(varargin{:});
 over = struct2nv(p.Unmatched);
 V = p.Results.Validation; if isempty(V), V = fwc_validate_hfss(); end
 D = struct('Xring', V.Smeas, 'R', V.R, 'modes', V.A.modes, 'psi', V.psi(:).' * pi/180, 'f', V.freq(:).', ...
     'aTrue', V.A.a);
 o = p.Results;
+if strcmp(o.ProbeModel, 'free')
+    D.R = fwc_free_resp(V);
+    fprintf('probe model: FREE SPACE (ideal point probes, no coupling)\n');
+end
 if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb)
     rs = RandStream('mt19937ar', 'Seed', 7000 + o.PerturbSeed);
     [np, nm, nf] = size(D.R);
@@ -50,6 +55,7 @@ v = arrayfun(@(t) t.nmse.perfreqScale, T); g = arrayfun(@(t) t.nmse.globalDelay,
 fprintf('per-frequency score: mean %.1f dB, best %.1f, worst %.1f; constant+delay: mean %.1f, best %.1f, worst %.1f\n', ...
     mean(v), min(v), max(v), mean(g), min(g), max(g));
 tag = ''; if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb), tag = sprintf('_az%g_rel%g', o.PerturbAzDeg, o.PerturbRelDb); end
+if strcmp(o.ProbeModel, 'free'), tag = ['_free' tag]; end
 save(fullfile(cpr_paths().results, ['fwc_trials' tag '.mat']), 'T', 'c', 'o');
 end
 
