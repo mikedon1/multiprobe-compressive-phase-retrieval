@@ -12,12 +12,14 @@ if ~isfield(c, 'npol'), c.npol = 1; end
 [c.nw, c.nh, ns] = size(X); c.nd = ns / c.npol; c.K = min(c.K, c.nd);
 if c.nd ~= numel(f), error('cpr_run_pattern: size(X,3) must be npol*numel(f)'); end
 x = X(:);
+tSetup = tic;                                      % readings + operator construction time (round 7)
 S = make_readings(c, f, seed);
 z = S.Phi * x;
 wvar = cpr_noisevar(c, z, x);
 w = sqrt(wvar/2) * (randn(S.m, 2) * [1; 1i]);
 PhiSolver = S.Phi; if isfield(S, 'PhiA'), PhiSolver = S.PhiA; end   % calibration error: solver assumes calibrated phases
 A = cpr_operator(c, PhiSolver, c.nw, c.nh, ns, cpr_basis(c.basis, f, 0, c.npol));
+timeSetup = toc(tSetup);
 t0 = tic;
 switch c.meas
     case 'complex'
@@ -58,7 +60,7 @@ switch c.meas
             info.selfCal = cal_score(calD, S, f, calLog, calG);
         end
 end
-r.cfg = c; r.seed = seed; r.time = toc(t0);
+r.cfg = c; r.seed = seed; r.time = toc(t0); r.timeSetup = timeSetup;
 r.score = cpr_score(X, xh, ns);
 r.scoreVec = vec_score(X, xh, c.nd, c.npol);
 info.snrCombinedDb = 10*log10(mean(abs(z).^2) / wvar);   % realized SNR of the combined signals (round 7)
