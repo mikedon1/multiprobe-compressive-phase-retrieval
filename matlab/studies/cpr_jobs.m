@@ -73,15 +73,16 @@ switch tok{2}
         % truth for both bases (cpr_run routes DFT with npol = 2 through cpr_run_pattern), the paper's solver
         % setting, plain prior for both. IS Fourier / IS spherical-wave and IC Fourier with 8 legs / IC
         % spherical-wave without legs over the ratio grid; IC Fourier without legs at 0.2, 0.6, 1.0.
+        % 2026-10-19 (user): legs dropped from the paper -> no IC Fourier + 8 legs curve; IC Fourier (no legs) fails by
+        % design, so it gets 4 points and the restart cap of 3
         com = {'npol',2,'nw',32,'groupPrior','none'};
         for rt = S.sweeps.ratio
             J = add(J, study, sprintf('IS_dft_r%.2f', rt), [meas com {'arch','IS','angBasis','dft','ratio',rt}], sw);
             J = add(J, study, sprintf('IS_vsh_r%.2f', rt), [meas com {'arch','IS','angBasis','vsh','ratio',rt}], sw);
-            J = add(J, study, sprintf('IC_dft_legs8_r%.2f', rt), [meas com {'arch','IC','angBasis','dft','nlegs',8,'ratio',rt}], sw);
             J = add(J, study, sprintf('IC_vsh_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','vsh','nlegs',0,'ratio',rt}], sw);
         end
-        for rt = [0.2 0.6 1.0]
-            J = add(J, study, sprintf('IC_dft_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','dft','nlegs',0,'ratio',rt}], sw);
+        for rt = [0.2 0.3 0.6 1.0]
+            J = add(J, study, sprintf('IC_dft_legs0_r%.2f', rt), [meas cap com {'arch','IC','angBasis','dft','nlegs',0,'ratio',rt}], sw);
         end
     case 'basiscmp'
         % basis comparison figure (user, 2026-10-19): the setup of the earlier work (one component, 64 x 32),
