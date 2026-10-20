@@ -149,6 +149,12 @@ switch tok{2}
                     'patternLfit',30,'vshL',L,'nw',64}], sw);
             end
         end
+    case 'pairs'
+        % round 7 (user, 2026-10-20): random port sets vs deterministic pairs (Paulus-style combinations of probe signals,
+        % cycling neighbour pairs of each polarization and the two ports of one probe), P = 2, same everything else
+        for a = {'IS', 'IC'}, for rt = [0.12 0.3], for pr = {'random', 'pairs'}
+            J = add(J, study, sprintf('%s_%s_r%.2f', a{1}, pr{1}, rt), [meas {'arch',a{1},'P',2,'ratio',rt,'portRule',pr{1}}], sw);
+        end, end, end
     case 'combiner'
         % round 7 (H1): ideal passive P-way combiner (1/sqrt(P) branch transfers) vs the unit-transfer idealization, IS
         % at 50 dB SNR (fixed detector noise) over the active-port count
