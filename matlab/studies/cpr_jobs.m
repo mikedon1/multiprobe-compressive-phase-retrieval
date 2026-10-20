@@ -82,7 +82,7 @@ switch tok{2}
             J = add(J, study, sprintf('IC_vsh_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','vsh','nlegs',0,'ratio',rt}], sw);
         end
         for rt = [0.2 0.3 0.6 1.0]
-            J = add(J, study, sprintf('IC_dft_legs0_r%.2f', rt), [meas cap com {'arch','IC','angBasis','dft','nlegs',0,'ratio',rt}], sw);
+            J = add(J, study, sprintf('IC_dft_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','dft','nlegs',0,'ratio',rt}], sw);   % round 7: equal effort (10 restarts) with IC VSH
         end
     case 'basiscmp'
         % basis comparison figure (user, 2026-10-19): the setup of the earlier work (one component, 64 x 32),
@@ -149,6 +149,28 @@ switch tok{2}
                     'patternLfit',30,'vshL',L,'nw',64}], sw);
             end
         end
+    case 'combiner'
+        % round 7 (H1): ideal passive P-way combiner (1/sqrt(P) branch transfers) vs the unit-transfer idealization, IS
+        % at 50 dB SNR (fixed detector noise) over the active-port count
+        for cn = {'unit', 'passive'}, for P = [1 2 4 8 16]
+            J = add(J, study, sprintf('IS_%s_P%d', cn{1}, P), [meas {'combNorm',cn{1},'P',P,'snrdB',50}], sw);
+        end, end
+    case 'scprior'
+        % round 7 (C1/C2): self-calibration with a mismatched prior width, IC and two-pass IC at 5 deg cable error
+        for a = {{'arch','IC'}, {'arch','IC','icShiftFrac',1/2}}, for pr = [2.5 10]
+            lab = 'IC'; if numel(a{1}) > 2, lab = 'ICS'; end
+            J = add(J, study, sprintf('%s_cal5_sc_prior%g', lab, pr), [meas cap a{1} {'calErrDeg',5,'selfCal',true, ...
+                'nitEM',30,'selfCalPriorDeg',pr}], sw);
+        end, end
+    case 'repeat'
+        % round 7 (critique section 8): repeated trials at a hard point. IS and IC at m/n 0.12 (the transition) and IC
+        % at 5 deg cable error with self-calibration and its 30-update control, seeds 1-5
+        rs = 1:5;
+        for a = {'IS', 'IC'}
+            J = add(J, study, sprintf('%s_r0.12', a{1}), [meas {'arch',a{1},'ratio',0.12}], rs);
+        end
+        J = add(J, study, 'IC_cal5_em30', [meas cap {'arch','IC','calErrDeg',5,'nitEM',30}], rs);
+        J = add(J, study, 'IC_cal5_sc', [meas cap {'arch','IC','calErrDeg',5,'selfCal',true,'nitEM',30,'selfCalPriorDeg',5}], rs);
     case 'caldrift'
         % NOT queued (ask): thermal drift (every cable longer by the same fraction) in the data, IC, 30 EM updates:
         % no self-calibration, per-port self-calibration, and the one-parameter drift self-calibration
@@ -206,7 +228,7 @@ switch tok{2}
         % Fig. 3(c) (user, 2026-10-19): IC with the 2D Fourier basis and no legs at the paper's settings (32 x 16,
         % both components, m/n 0.3, plain prior), keeping the recovered pattern. It fails by design (the block-
         % phase ambiguity), so every restart would run to the end: cap 3.
-        J = add(J, study, 'IC_dft_legs0', [meas cap {'arch','IC','angBasis','dft','npol',2,'nw',32, ...
+        J = add(J, study, 'IC_dft_legs0', [meas {'arch','IC','angBasis','dft','npol',2,'nw',32, ...   % round 7: 10 restarts
             'groupPrior','none','nlegs',0}], sw);
         J(end).saveXh = true;
     case 'calerrrc'
@@ -236,7 +258,7 @@ switch tok{2}
         % perform?"): the same spherical-wave basis with a Gaussian prior on every coefficient, IS and IC over
         % the ratio grid. Compare with pr_ratio (sparsity prior).
         for a = {'IS', 'IC'}, for rt = S.sweeps.ratio
-            J = add(J, study, sprintf('%s_nosparse_r%.2f', a{1}, rt), [meas cap {'arch',a{1},'ratio',rt,'sparsePrior',false}], sw);
+            J = add(J, study, sprintf('%s_nosparse_r%.2f', a{1}, rt), [meas {'arch',a{1},'ratio',rt,'sparsePrior',false}], sw);   % round 7: equal effort with pr_ratio
         end, end
     case 'cables'
         % do random cable lengths help (user, 2026-10-19)? phase-matched cables (all lengths 0) vs U(0, 50) cm,

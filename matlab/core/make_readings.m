@@ -108,6 +108,9 @@ EP = I; ET = I;                                           % port and tone index 
 rowTone = zeros(mTot, 1);
 ptr = 0; row = 0;
 gauss = isfield(c, 'weights') && strcmp(c.weights, 'gauss');
+% combiner normalization (round 7, 2026-10-20): 'unit' (default) = unit branch transfers, an idealized buffered/lossless
+% combiner; 'passive' = ideal passive matched P-way combiner of the selected ports, branch amplitude 1/sqrt(P)
+passiveComb = isfield(c, 'combNorm') && strcmp(c.combNorm, 'passive');
 if gauss, gs = RandStream('mt19937ar', 'Seed', seed + 7919); end   % separate stream: other draws unchanged
 % calibration error: the solver assumes the calibrated cable phases, the data use the true ones.
 % c.calErrModel = 'length' (default, physical): each port's cable length is off by a fixed dL_p, so its
@@ -169,6 +172,7 @@ for r = 1:R
     nt = numel(tones);                                    % tones in this reading (K except near the edges)
     W = exp(1i*2*pi*L(sub2ind(size(L), pr, q)) ./ lam(tones));   % P x nt cable phases
     if gauss, W = W .* ((randn(gs, P, 1) + 1i*randn(gs, P, 1)) / sqrt(2)); end   % CN(0,1), same for all tones
+    if passiveComb, W = W / sqrt(P); end                  % ideal passive P-way combiner (known; data and model)
     cols = a + (tones - 1)*n2 + (q - 1)*nd*n2;            % P x K pattern columns
     if calErr, Et = E(idx, tones); else, Et = ones(P, nt); end   % true/assumed phase, P x nt
     if ~phaseless
