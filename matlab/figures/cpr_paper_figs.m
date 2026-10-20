@@ -59,6 +59,20 @@ switch part
         if ~isempty(T), archs(F3, T, 'snrdB', 'metric', P('pr2_snr'), 'SNR (dB)', 'northeast', false, []); end
         T = tryload('pr_calerr'); if ~isempty(T), calerr(F3, T, P('pr2_calerr')); end
         T = tryload('pr_size');  if ~isempty(T), single(F3, T, 'nw', 'metric', P('pr2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], []); end
+    case 'v9'
+        % round 7 (2026-10-20): Fig. 7 (basis comparison, pr_basiscmp32) and Fig. 6(c) with self-calibration
+        % (pr_calerr30 = the 30-update control without it, pr_calerrsc, pr_calerrics, pr_calerrrc), 7.8 x 5 cm like
+        % the other Fig. 6 panels. Reads the current results folder (CPR_RESULTS); pr_basiscmp32 may live in another
+        % folder: cpr_paper_figs('v9') looks for it in the current folder first, then in a sibling results_v8.
+        F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
+        T = tryload('pr_basiscmp32');
+        if isempty(T)
+            alt = fullfile(fileparts(cpr_paths().results), 'results_v8');
+            if exist(alt, 'dir'), T = load_from(alt, 'pr_basiscmp32'); end
+        end
+        if ~isempty(T), basiscmp(F3, T, P('pr3_basiscmp')); end
+        Tsc = [tryload('pr_calerr30'); tryload('pr_calerrsc'); tryload('pr_calerrics'); tryload('pr_calerrrc')];
+        if ~isempty(Tsc), calerrsc(F3, Tsc, P('pr3_calerr')); end
 end
 fprintf('cpr_paper_figs(%s): figures in %s\n', part, pDir);
 end
@@ -164,6 +178,56 @@ nm{end+1} = '20log_{10}\sigma_\phi';
 xlim(ax, [0 max(T.calErrDeg)]);
 xlabel(ax, 'rms cable phase error \sigma_\phi (deg)'); ylabel(ax, 'NMSE (dB)');
 legend(ax, h, nm, 'Location', 'southeast'); F.style(ax); F.save(f, file);
+end
+
+function basiscmp(F, T, file)
+% NMSE vs sampling ratio: colour = architecture, solid = spherical-wave model, dashed = unconstrained 2D Fourier model
+f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
+cur = {'IS_vsh', 'IS', '-', 'IS, spherical-wave'; 'IS_dft', 'IS', '--', 'IS, Fourier'; ...
+       'IC_vsh', 'IC', '-', 'IC, spherical-wave'; 'IC_dft', 'IC', '--', 'IC, Fourier'};
+for i = 1:size(cur, 1)
+    s = T(startsWith(T.label, cur{i, 1}), :); if isempty(s), continue; end
+    s = sortrows(s, 'ratio');
+    [xu, ~, g] = unique(s.ratio); y = accumarray(g, metric(s, 'metric'), [], @mean);
+    h(end+1) = plot(ax, xu, y, cur{i, 3}, 'Color', F.col.(cur{i, 2}), 'LineWidth', F.lw); nm{end+1} = cur{i, 4}; %#ok<AGROW>
+end
+set(ax, 'XScale', 'log', 'XTick', [0.05 0.1 0.2 0.4 0.8]);
+if ~F.paperAxes(), set(ax, 'XTick', unique(T.ratio)); end
+xlim(ax, [min(T.ratio) max(T.ratio)]);
+xlabel(ax, 'sampling ratio {\itm/n}'); ylabel(ax, 'NMSE (dB)');
+legend(ax, h, nm, 'Location', ifelse(F.paperAxes(), 'southwest', 'best')); F.style(ax); F.save(f, file);
+end
+
+function calerrsc(F, T, file)
+% NMSE vs rms cable phase error at the band centre: with self-calibration (solid) for IS, IC, two-pass IC (label
+% prefix ICS) and RC; the equal-effort control without it (dashed) for IS and IC; and the expected error of a
+% conventional measurement through the same cables (dotted), E|exp(i e_k) - 1|^2 averaged over the 16 frequencies
+% with e_k ~ N(0, (sigma f_k / f_c)^2) (length errors: the phase grows with frequency).
+f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
+grp = regexp(T.label, '^[A-Z]+', 'match', 'once');           % IS, IC, ICS, RC
+sc = endsWith(T.label, '_sc');
+cur = {'IS', true, 'IS', '-', 'IS, self-cal.'; 'IC', true, 'IC', '-', 'IC, self-cal.'; ...
+       'ICS', true, 'RS', '-', 'two-pass IC, self-cal.'; 'RC', true, 'RC', '-', 'RC, self-cal.'; ...
+       'IS', false, 'IS', '--', 'IS'; 'IC', false, 'IC', '--', 'IC'};
+for i = 1:size(cur, 1)
+    s = T(strcmp(grp, cur{i, 1}) & sc == cur{i, 2} & T.calErrDeg > 0, :); if isempty(s), continue; end
+    [xu, ~, g] = unique(s.calErrDeg); y = accumarray(g, s.global, [], @mean);
+    h(end+1) = plot(ax, xu, y, cur{i, 4}, 'Color', F.col.(cur{i, 3}), 'LineWidth', F.lw); nm{end+1} = cur{i, 5}; %#ok<AGROW>
+end
+fk = linspace(1.90, 2.65, 16); fc = mean(fk);
+xr = linspace(0.5, max(T.calErrDeg), 60);
+yc = arrayfun(@(sd) 10*log10(mean(2*(1 - exp(-((sd*pi/180)*fk/fc).^2/2)))), xr);
+h(end+1) = plot(ax, xr, yc, ':', 'Color', [0.4 0.4 0.4], 'LineWidth', 1); nm{end+1} = 'conventional';
+xlim(ax, [0 max(T.calErrDeg)]);
+xlabel(ax, 'rms cable phase error \sigma_\phi (deg)'); ylabel(ax, 'NMSE (dB)');
+legend(ax, h, nm, 'Location', 'southeast', 'FontSize', 7); F.style(ax); F.save(f, file);
+end
+
+function T = load_from(dirName, study)
+% cpr_load from another results folder
+old = getenv('CPR_RESULTS'); setenv('CPR_RESULTS', dirName);
+try, T = cpr_load(study); catch, T = []; end
+setenv('CPR_RESULTS', old);
 end
 
 function matrices(F, file)
