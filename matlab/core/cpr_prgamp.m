@@ -72,13 +72,13 @@ gopt = gamp_settings(opts.nitGAMP);
 gain = 100;                                   % initial-estimate gain, raised after a failure
 
 best = struct('nres', inf, 'x', []);
-info.log = struct('nres_dB', {}, 'time', {}, 'score', {});
+info.log = struct('nres_dB', {}, 'time', {}, 'score', {}, 'nRuns', {}, 'nIts', {});
 tStart = tic; tryCount = 0;
 for t = 1:nTry
     tryCount = t; tRestart = tic;
     try
         if ~isempty(opts.reset), opts.reset(); end
-        [s, nres, failed] = one_restart(yAmp, A, P, coefEst, priorEst, gopt, gain, opts);
+        [s, nres, failed, nRuns, nIts] = one_restart(yAmp, A, P, coefEst, priorEst, gopt, gain, opts);
         if failed
             gain = 2*gain;                    % numerical failure: larger start, shorter step window
             gopt.stepWindow = ceil(0.75*gopt.stepWindow);
@@ -86,6 +86,7 @@ for t = 1:nTry
         xPat = A.syn(s);
         entry.nres_dB = nres; entry.time = toc(tRestart); entry.score = [];
         if ~isempty(opts.scoreFn), entry.score = opts.scoreFn(xPat); end
+        entry.nRuns = nRuns; entry.nIts = nIts;   % GAMP runs (EM updates + 1) and GAMP iterations of this restart (round 7)
         info.log(t) = entry;
         if nres < best.nres, best.nres = nres; best.x = xPat; end
         if opts.verbose
@@ -99,6 +100,7 @@ for t = 1:nTry
 end
 xhat = best.x;
 info.numTry = tryCount; info.nres_dB = best.nres; info.time = toc(tStart);
+info.nRunsTotal = sum([info.log.nRuns]); info.nItsTotal = sum([info.log.nIts]);   % over the logged restarts
 end
 
 % -------------------------------------------------------------------------------------------
@@ -151,9 +153,9 @@ g.stepWindow = 50; g.stepIncr = 1.1; g.stepDecr = 0.2;
 g.varNorm = 1; g.pvarStep = 1; g.rvarStep = 0; g.uniformVariance = 0;
 end
 
-function [s, nres, failed] = one_restart(yAmp, A, P, coefEst, priorEst, gopt, gain, opts)
-% One restart: random start, then alternate GAMP runs and EM updates.
-n = numel(P.v0); m = numel(yAmp);
+function [s, nres, failed, nRuns, nIts] = one_restart(yAmp, A, P, coefEst, priorEst, gopt, gain, opts)
+% One restart: random start, then alternate GAMP runs and EM updates. nRuns, nIts: GAMP runs and iterations used.
+n = numel(P.v0); m = numel(yAmp); nRuns = 0; nIts = 0;
 start = sqrt(P.rho0*P.v0/2).*(randn(n,2)*[1;1i]);
 gopt.xhat0 = gain*start;
 gopt.xvar0 = mean(abs(gopt.xhat0).^2)*ones(n,1);
@@ -173,7 +175,8 @@ for it = 1:opts.nitEM + 1
         priorEst.disableTune = false;
     end
     [est, lastOpt] = gampEst(priorEst, noiseEst, A, run);
-    nres = 20*log10(norm(abs(A.mult(est.xhat)) - yAmp)/norm(yAmp));
+    nRuns = it; if isfield(est, 'nit'), nIts = nIts + est.nit; end
+    nres =20*log10(norm(abs(A.mult(est.xhat)) - yAmp)/norm(yAmp));
     collapsed = norm(est.rhat)^2 <= 1e-6*P.rho0*sum(P.v0);
     if ~isfinite(nres) || collapsed
         failed = true; break;
