@@ -1,14 +1,17 @@
-function cpr_fig_sec5()
+function cpr_fig_sec5(part)
+%   cpr_fig_sec5()          both figures;  cpr_fig_sec5('accel')  only the acceleration figure
 %CPR_FIG_SEC5  Section VII figures in the paper's format (cpr_fig: 12 x 6 cm, Times, LaTeX axis labels).
 %  ift_freq.pdf  : NMSE per frequency at 50 dB SNR, two-scan technique vs. dual-pol CPR (IC). Both are
 %                  scored on both tangential components on the first sphere, one phase per
 %                  wavelength (two-scan: R(t).fieldErr; CPR: r.scoreVec.each).
 %  ift_accel.pdf : acceleration t_TS/t_CPR vs. gamma = t_m/t_s from eqs. (mtime_ift_norm) and
-%                  (mtime_cpr), at n_lambda = 16, K = 4, rho = 0.6 (the Section VII values), for
+%                  (mtime_cpr), at n_lambda = 16, K = 4, rho = 0.3 (the base value), for
 %                  several grid sizes (n_theta = n_phi/2).
 outDir = cpr_paths().results;
 pDir = fullfile(outDir, 'figs', 'paper');
 F = cpr_fig();
+if nargin < 1, part = 'all'; end
+if ~strcmp(part, 'accel')
 % --- NMSE per frequency ---
 S = load(fullfile(outDir, 'ift_floor_crlh_r15_30_snr50.mat')); R = S.R;
 [~, o] = sort([R.t]); R = R(o);
@@ -16,9 +19,10 @@ fG = [R.f]/1e9; eI = [R.fieldErr];
 % CPR estimates are mapped to the two-scan tensor grid (cpr_to_tensor) and scored exactly like
 % R.fieldErr: both tangential components, one phase per frequency (all on one grid).
 D1 = crlh_sphere(0.15, cpr_settings().nw, cpr_settings().nd, 1);
-runs = {'cpr_sphere_r15_s1_snr50_pol2.mat', 'IC, {\itm}/{\itn} = 0.6'; ...
-        'cpr_sphere_r15_s1_snr50_pol2_IS_m60.mat', 'IS, {\itm}/{\itn} = 0.6'; ...
-        'cpr_sphere_r15_s1_snr50_pol2_IS_m30.mat', 'IS, {\itm}/{\itn} = 0.3'};
+runs = {'cpr_sphere_r15_s1_snr50_pol2_IS_m30.mat', 'IS'; ...     % all four at m/n 0.3 (user, 2026-10-19)
+        'cpr_sphere_r15_s1_snr50_pol2_RS_m30.mat', 'RS'; ...
+        'cpr_sphere_r15_s1_snr50_pol2.mat', 'IC'; ...
+        'cpr_sphere_r15_s1_snr50_pol2_RC_m30.mat', 'RC'};
 eC = zeros(size(runs, 1), numel(fG));
 for i = 1:size(runs, 1)
     C = load(fullfile(outDir, runs{i, 1})); r = C.r;
@@ -46,8 +50,9 @@ xlabel(ax, 'Frequency (GHz)'); ylabel(ax, 'NMSE (dB)');
 legend(ax, [{'Two-scan'}, runs(:, 2).'], 'Location', 'northwest');
 xlim(ax, [fG(1) fG(end)]); F.style(ax); F.save(f, fullfile(pDir, 'ift_freq'));
 fprintf('two-scan %s\n', mat2str(round(eI, 1)));
+end
 % --- acceleration vs gamma ---
-nl = 16; K = 4; rho = 0.6; g = logspace(0, 4, 200); nphis = [64 48 32 16];
+nl = 16; K = 4; rho = 0.3; g = logspace(0, 4, 200); nphis = [64 48 32 16];
 f = F.new(); ax = axes(f); hold(ax, 'on'); nm = {};
 for i = 1:numel(nphis)
     np = nphis(i); nt = 2*np;    % arc probes x rotations as in the IC layout of Fig. 10 (64 x 32)
