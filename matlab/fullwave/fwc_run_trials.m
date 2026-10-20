@@ -8,11 +8,33 @@ function T = fwc_run_trials(seeds, varargin)
 % switches, P ports, K tones, random cables, noise, PR-GAMP with the calibrated operator). Scores per trial:
 % perfreqScale (main), perfreqPhase, globalPhase, globalScale, globalDelay (one constant + one delay), model.
 % Saves <results>/fwc_trials.mat (T: one entry per seed) and prints a summary (mean of dB, best, worst).
-p = inputParser; p.KeepUnmatched = true; p.addParameter('Validation', []); p.parse(varargin{:});
+p = inputParser; p.KeepUnmatched = true; p.addParameter('Validation', []);
+p.addParameter('PerturbAzDeg', 0);    % robustness (2026-10-19): rms azimuthal position error of each probe position in
+                                      %   the CALIBRATION (both ports of a position share it), deg; the data stay HFSS
+p.addParameter('PerturbRelDb', -inf); % random complex error of every embedded-response entry, rms relative to the rms
+                                      %   response of its port, dB (e.g. -40: the probe-equalization residual of [Varela 2024])
+p.addParameter('PerturbSeed', 1);
+p.parse(varargin{:});
 over = struct2nv(p.Unmatched);
 V = p.Results.Validation; if isempty(V), V = fwc_validate_hfss(); end
 D = struct('Xring', V.Smeas, 'R', V.R, 'modes', V.A.modes, 'psi', V.psi(:).' * pi/180, 'f', V.freq(:).', ...
     'aTrue', V.A.a);
+o = p.Results;
+if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb)
+    rs = RandStream('mt19937ar', 'Seed', 7000 + o.PerturbSeed);
+    [np, nm, nf] = size(D.R);
+    if o.PerturbAzDeg > 0                     % a probe moved by delta in phi = the AUT turned by -delta: e^{+i m delta}
+        ri = V.map.ring_index(:); [u, ~, iu] = unique(ri);
+        dPos = (o.PerturbAzDeg*pi/180) * randn(rs, numel(u), 1); dP = dPos(iu);
+        D.R = D.R .* exp(1i * dP .* reshape(D.modes(:, 2), 1, nm));
+    end
+    if isfinite(o.PerturbRelDb)
+        sc = sqrt(mean(abs(D.R).^2, [2 3]));  % rms response per port
+        E = (randn(rs, np, nm, nf) + 1i*randn(rs, np, nm, nf)) / sqrt(2);
+        D.R = D.R + 10^(o.PerturbRelDb/20) * sc .* E;
+    end
+    fprintf('calibration perturbed: azimuth %.2f deg rms, entries %.0f dB\n', o.PerturbAzDeg, o.PerturbRelDb);
+end
 c = cpr_cfg('arch', 'IC', 'snrdB', 50, over{:});
 fprintf('Section VII trials: %d ports x %d rotations x %d frequencies, m/n %.2f, SNR %d dB, P %d, K %d\n', ...
     size(D.Xring, 1), size(D.Xring, 2), size(D.Xring, 3), c.ratio, c.snrdB, c.P, c.K);
@@ -27,7 +49,8 @@ end
 v = arrayfun(@(t) t.nmse.perfreqScale, T); g = arrayfun(@(t) t.nmse.globalDelay, T);
 fprintf('per-frequency score: mean %.1f dB, best %.1f, worst %.1f; constant+delay: mean %.1f, best %.1f, worst %.1f\n', ...
     mean(v), min(v), max(v), mean(g), min(g), max(g));
-save(fullfile(cpr_paths().results, 'fwc_trials.mat'), 'T', 'c');
+tag = ''; if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb), tag = sprintf('_az%g_rel%g', o.PerturbAzDeg, o.PerturbRelDb); end
+save(fullfile(cpr_paths().results, ['fwc_trials' tag '.mat']), 'T', 'c', 'o');
 end
 
 function nv = struct2nv(s)
