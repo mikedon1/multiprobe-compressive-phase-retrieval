@@ -14,7 +14,7 @@ f = fullfile(outDir, sprintf('ift_floor_%s_r%02d_%02d_snr%d.mat', antenna, round
 if exist(f, 'file'), S = load(f); R = S.R; else, R = struct([]); end
 nd = max(tidx);
 nw = cpr_settings().nw;
-D1 = crlh_sphere(r1, nw, nd, 1); D2 = crlh_sphere(r2, nw, nd, 1);
+tB = tic; D1 = crlh_sphere(r1, nw, nd, 1); D2 = crlh_sphere(r2, nw, nd, 1); tBuild = toc(tB);   % data + operator construction (s), saved with R (round 7)
 s2 = D2.scale / D1.scale; S = D1.S;
 for t = tidx
     if ~isempty(R) && any([R.t] == t), continue; end
@@ -32,7 +32,7 @@ for t = tidx
         'bestStart', info.restart, 'time', info.time, 'fieldErr', 20*log10(norm(a2 - b)/norm(b)), ...
         'cprhErr', 20*log10(norm(Xh(:) - X(:))/norm(X(:))), 'Xh', Xh);
     if isempty(R), R = e; else, R(end+1) = e; end %#ok<AGROW>
-    save(f, 'R');
+    save(f, 'R', 'tBuild');
     fprintf('%s f %.2f GHz Nc %d: residual %.1f dB after %d starts (best %d), E_cprh error %.1f dB, field %.1f dB, %.0fs\n', ...
         antenna, e.f/1e9, Nc, e.res_dB, e.starts, e.bestStart, e.cprhErr, e.fieldErr, e.time);
 end
