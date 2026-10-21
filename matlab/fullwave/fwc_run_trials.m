@@ -24,7 +24,10 @@ p.addParameter('Ring', 'full');       % 'full' (the paper, 2026-10-21): the arch
                                       %   results_vsh/drivers/diag_geo.m and the supplement's sampling-geometry table)
 p.parse(varargin{:});
 over = struct2nv(p.Unmatched);
-V = p.Results.Validation; if isempty(V), V = fwc_validate_hfss(); end
+V = p.Results.Validation;
+vFile = fullfile(cpr_paths().data, 'fullwave', 'fwc_validation.mat');   % processed HFSS data released with the code
+if isempty(V) && exist(vFile, 'file'), S = load(vFile); V = S.V; end
+if isempty(V), V = fwc_validate_hfss(); end                              % from the raw exports (data/hfss_fullarc)
 D = struct('Xring', V.Smeas, 'R', V.R, 'modes', V.A.modes, 'psi', V.psi(:).' * pi/180, 'f', V.freq(:).', ...
     'aTrue', V.A.a);
 o = p.Results;

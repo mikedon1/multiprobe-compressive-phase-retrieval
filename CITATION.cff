@@ -11,8 +11,9 @@ abstract: >-
   MATLAB code and data for the simulations in "Compressive Phase Retrieval for
   Multi-Probe Antenna Measurement Systems" (M. Don and G. R. Arce): compressive
   phase retrieval of antenna patterns from amplitude-only multi-probe measurements
-  with on/off switches, a comparison with the two-scan phaseless technique, and a
-  full-wave example with HFSS probe responses.
+  with on/off switches and a spherical-wave sparse representation, a comparison
+  with the two-scan phaseless technique, and a full-wave example with
+  embedded-probe calibration from HFSS.
 keywords:
   - compressive sensing
   - phase retrieval

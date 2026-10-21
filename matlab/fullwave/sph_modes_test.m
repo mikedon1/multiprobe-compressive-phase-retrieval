@@ -1,7 +1,7 @@
 function sph_modes_test()
 %SPH_MODES_TEST  Validate sph_modes + regular-wave fit + reciprocity coupling with Hertzian dipoles (exact fields).
 maxNumCompThreads(1);
-addpath(genpath('C:\Users\miked\Projects\multiprobe-compressive-phase-retrieval\matlab'));
+% run setup.m first
 k = 2*pi/0.1;                                     % 3 GHz
 Lout = 14; Lreg = 22;
 % quadrature sphere for the reciprocity integral

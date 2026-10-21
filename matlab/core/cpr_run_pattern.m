@@ -50,6 +50,7 @@ switch c.meas
             if isfield(c, 'selfCalModel'), calOpts.model = c.selfCalModel; end
             if isfield(c, 'selfCalGain'), calOpts.gain = c.selfCalGain; end
             if isfield(c, 'selfCalPriorGainDb'), calOpts.sigG = c.selfCalPriorGainDb/20*log(10); end
+            if isfield(c, 'selfCalProjectAfter'), calOpts.projectAfter = c.selfCalProjectAfter; end   % false: constrained step
             gauge0 = []; if isfield(o, 'gauge'), gauge0 = o.gauge; end
             reset0 = o.reset;
             o.reset = @calReset;

@@ -9,7 +9,7 @@ function ok = check_reproduction()
 cpr_test_operator();
 cpr_settings('paper');
 r = cpr_run(cpr_cfg(), 1);
-ref = -49.96; tol = 0.05;
+ref = -46.51; tol = 0.05;                          % paper: IS -46.5 dB at m/n = 0.3 (Fig. 6(a))
 ok = abs(r.score.global - ref) < tol;
 fprintf('IS, m/n = 0.3, seed 1: NMSE %.2f dB (reference %.2f dB, tolerance %.2f dB): %s\n', ...
     r.score.global, ref, tol, ternary(ok, 'PASS', 'FAIL'));

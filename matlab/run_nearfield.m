@@ -9,6 +9,10 @@ if isempty(which('fminunc')) || ~license('test', 'Optimization_Toolbox')
 end
 S = cpr_settings(); snr = S.nearfield.snr;
 twoscan_run('crlh', 0.15, 0.30, snr, 1:S.nd);
+if S.nd == 16                                      % the paper: frequency continuation where random starts failed
+    twoscan_continue('crlh', 0.15, 0.30, snr, [16 15 14 13]);
+    twoscan_continue('crlh', 0.15, 0.30, snr, [11 10 9 8 7]);
+end
 for seed = 1:S.trials.nearfield                    % both at the base ratio m/n 0.3 (user, 2026-10-19: IS 0.6 dropped)
     cpr_sphere_run(0.15, seed, 'npol', 2, 'snrdB', snr);                                    % IC, m/n 0.3
     cpr_sphere_run(0.15, seed, 'npol', 2, 'snrdB', snr, 'arch', 'IS', 'ratio', 0.3);

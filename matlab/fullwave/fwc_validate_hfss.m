@@ -2,7 +2,8 @@ function V = fwc_validate_hfss(cfg)
 %FWC_VALIDATE_HFSS  Step 4 of sim/hfss/DUALPOL_RING_PLAN.md: predict the solved dual-ring rotations
 %from the AUT-alone far field (Solve A) and the ring-alone probe near fields (Solve B).
 %   V = fwc_validate_hfss(cfg)
-% cfg fields (defaults for the private-repo layout):
+% cfg fields (defaults: the raw HFSS exports in <repository>/data/hfss_fullarc, or in the folder named by the
+% environment variable CPR_HFSS):
 %   (defaults: the FULL-ARC model of 2026-10-19 -- offset AUT, ring 15-165 deg; the old 20-90 ring used
 %   autalone_farfield.csv, ringalone_dual_*, sweep_dualpol_rot*)
 %   ffFile   Solve A far-field CSV
@@ -14,7 +15,7 @@ function V = fwc_validate_hfss(cfg)
 %   L        AUT mode degree (12); Lreg regular-wave degree (20); rq quadrature radius (0.145 m)
 % V: nmse_db (2 x nf, rows = rotation sense +1 / -1), kappa, perPort (sense +1), A (Solve A fit),
 %    R (probe responses), info per port, and the measured/predicted arrays.
-R0 = 'C:\Users\miked\Projects\cpr-multiprobe-antenna\sim\hfss\results';
+R0 = getenv('CPR_HFSS'); if isempty(R0), R0 = fullfile(cpr_paths().data, 'hfss_fullarc'); end
 def = struct('ffFile', fullfile(R0, 'autalone_offset_farfield.csv'), 'nfDir', fullfile(R0, 'ringalone_fullarc_nf'), ...
     'mapFile', fullfile(R0, 'ringalone_fullarc_map.csv'), 'sGlob', fullfile(R0, 'sweep_fullarc_rot*.s33p'), ...
     'radii', [0.12 0.17], 'nfNames', {{'NF12', 'NF17'}}, 'L', 12, 'Lreg', 20, 'rq', 0.145);
