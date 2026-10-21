@@ -46,13 +46,27 @@ end
 M = M(have, :);
 fprintf('ports with near-field data: %d of %d\n', height(M), numel(have));
 np = height(M); R = zeros(np, size(A.a, 1), nf); info = cell(1, np);
-for p = 1:np
-    Ts = cell(1, numel(cfg.radii));
-    for s = 1:numel(cfg.radii)
-        Ts{s} = read_aedt_table(fullfile(cfg.nfDir, sprintf('%s_%s.csv', cfg.nfNames{s}, M.nf_terminal(p))));
+if ~isfield(cfg, 'fast'), cfg.fast = true; end            % round 7: one factorization per frequency for all ports
+if cfg.fast
+    TsAll = cell(1, np);
+    for p = 1:np
+        TsAll{p} = cell(1, numel(cfg.radii));
+        for s = 1:numel(cfg.radii)
+            TsAll{p}{s} = read_aedt_table(fullfile(cfg.nfDir, sprintf('%s_%s.csv', cfg.nfNames{s}, M.nf_terminal(p))));
+        end
+        if mod(p, 8) == 0, fprintf('read the near-field files of %d of %d ports\n', p, np); end
     end
-    [Rp, info{p}] = fwc_probe_resp(Ts, cfg.radii, cfg.Lreg, cfg.L, cfg.rq);
-    R(p, :, :) = permute(Rp, [3 1 2]);
+    [R, info] = fwc_probe_resp_all(TsAll, cfg.radii, cfg.Lreg, cfg.L, cfg.rq);
+    clear TsAll
+else
+    for p = 1:np
+        Ts = cell(1, numel(cfg.radii));
+        for s = 1:numel(cfg.radii)
+            Ts{s} = read_aedt_table(fullfile(cfg.nfDir, sprintf('%s_%s.csv', cfg.nfNames{s}, M.nf_terminal(p))));
+        end
+        [Rp, info{p}] = fwc_probe_resp(Ts, cfg.radii, cfg.Lreg, cfg.L, cfg.rq);
+        R(p, :, :) = permute(Rp, [3 1 2]);
+    end
 end
 fprintf('Solve B: regular-wave fit residual worst %.1f dB; radius consistency worst %.1f dB\n', ...
     20*log10(max(cellfun(@(x) max(x.fitres), info))), 20*log10(max(cellfun(@(x) max(x.radres), info))));
