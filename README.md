@@ -98,9 +98,12 @@ the complex-measurement studies (`cs_*`), whose results are not in the paper.
   receiving response of each of the 32 probe ports to each spherical mode (by reciprocity from the array-alone
   solve), and the solved AUT-to-probe transmissions of the 33-port model at 32 rotations. `run_fullwave` uses it
   directly. `data/fullwave/ringalone_fullarc_map.csv` is the port map.
-* The raw HFSS exports (rotation Touchstone files, AUT-alone far field, array-alone near fields on two spheres) are
-  needed only to rebuild that file with `fwc_validate_hfss`, which reads them from `data/hfss_fullarc` or from the
-  folder named by the `CPR_HFSS` environment variable.
+* `data/hfss_fullarc/` (64 MB): the HFSS exports behind that file, packed by `fwc_pack_hfss` into compressed MATLAB
+  files with single-precision values (rounding about -144 dB): `hfss_aut.mat` (AUT-alone far field), `hfss_rotations.mat`
+  (S-parameters of the 33-port model at 32 rotations and of the ring alone), `hfss_nf_r12.mat` and `hfss_nf_r17.mat`
+  (near fields of the ring alone on spheres of 12 and 17 cm, one port at a time). `fwc_validate_hfss` rebuilds
+  `fwc_validation.mat` from them (the result matches the stored file to -153 dB). It reads the folder named by the
+  `CPR_HFSS` environment variable instead, if set, and reads the original CSV/Touchstone exports when those are present.
 * `data/hfss/`: Touchstone files of the earlier 20-port leg-probe model, not used by the current paper.
 
 ## License and citation
