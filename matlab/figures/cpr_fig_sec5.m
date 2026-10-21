@@ -43,12 +43,14 @@ for i = 1:size(runs, 1)
 end
 f = F.new(); ax = axes(f); hold(ax, 'on');
 plot(ax, fG, eI, F.lss{1}, 'Color', F.cols(1,:), 'LineWidth', F.lw);
-for i = 1:size(runs, 1)
-    plot(ax, fG, eC(i, :), F.lss{i+1}, 'Color', F.cols(i+1,:), 'LineWidth', F.lw);
-end
+iIC = find(strcmp(runs(:, 2), 'IC'));                   % only IC is plotted (user, 2026-10-21): the four architectures
+plot(ax, fG, eC(iIC, :), F.lss{2}, 'Color', F.cols(2,:), 'LineWidth', F.lw);   % are within ~1 dB (printed above)
 xlabel(ax, 'Frequency (GHz)'); ylabel(ax, 'NMSE (dB)');
-legend(ax, [{'Two-scan'}, runs(:, 2).'], 'Location', 'northwest');
-xlim(ax, [fG(1) fG(end)]); F.style(ax); F.save(f, fullfile(pDir, 'ift_freq'));
+xlim(ax, [fG(1) fG(end)]); F.style(ax);
+yl = ylim(ax); ylim(ax, [yl(1) - 6, yl(2)]);             % room for a one-row legend below the curves (2026-10-21)
+ax.YTick = ceil(yl(1)/5)*5 : 5 : floor(yl(2)/5)*5;       % no tick label under the legend
+legend(ax, {'Two-scan', 'Compressive, IC'}, 'Location', 'south', 'NumColumns', 2);
+F.save(f, fullfile(pDir, 'ift_freq'));
 fprintf('two-scan %s\n', mat2str(round(eI, 1)));
 end
 % --- acceleration vs gamma ---

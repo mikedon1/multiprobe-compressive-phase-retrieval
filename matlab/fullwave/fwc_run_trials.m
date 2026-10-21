@@ -1,5 +1,6 @@
 function T = fwc_run_trials(seeds, varargin)
-%FWC_RUN_TRIALS  Section VII trials on the full-arc HFSS data with embedded-probe calibration (2026-10-19).
+%FWC_RUN_TRIALS  Section VII trials on the HFSS data with embedded-probe calibration (2026-10-19; emulated full ring by
+%default since 2026-10-21, option 'Ring').
 %   T = fwc_run_trials(1:10)                         IC, m/n 0.3, 50 dB SNR (the paper's Section VII)
 %   T = fwc_run_trials(1, 'maxTry', 1, 'nitEM', 2)   extra name/value pairs override cpr_cfg
 %   T = fwc_run_trials(1:10, 'Validation', V)        reuse a fwc_validate_hfss result instead of recomputing it
@@ -15,6 +16,12 @@ p.addParameter('PerturbRelDb', -inf); % random complex error of every embedded-r
                                       %   response of its port, dB (e.g. -40: the probe-equalization residual of [Varela 2024])
 p.addParameter('PerturbSeed', 1);
 p.addParameter('ProbeModel', 'embedded'); % 'embedded' (the paper) | 'free': ideal point probes, no coupling (fwc_free_resp)
+p.addParameter('OutTag', '');         % appended to the output file name (parallel workers on disjoint seeds; merge after)
+p.addParameter('Ring', 'full');       % 'full' (the paper, 2026-10-21): the arch at psi + 180 deg is the far half of a full
+                                      %   ring at psi, so the 32 computed rotations form a 64-port ring at 16 rotations
+                                      %   (coupling between the two halves is not in the single-arch HFSS model);
+                                      %   'arc': the one-sided arch at 32 rotations (fails for the dipole AUT, see
+                                      %   results_vsh/drivers/diag_geo.m and the supplement's sampling-geometry table)
 p.parse(varargin{:});
 over = struct2nv(p.Unmatched);
 V = p.Results.Validation; if isempty(V), V = fwc_validate_hfss(); end
@@ -40,6 +47,17 @@ if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb)
     end
     fprintf('calibration perturbed: azimuth %.2f deg rms, entries %.0f dB\n', o.PerturbAzDeg, o.PerturbRelDb);
 end
+if strcmp(o.Ring, 'full')                     % emulated full ring: ports [arch; arch turned by 180 deg], 16 rotations
+    nr = numel(D.psi); h = nr/2;
+    if mod(nr, 2) || any(abs(D.psi(h+1:end) - D.psi(1:h) - pi) > 1e-9)
+        error('fwc_run_trials: Ring full needs rotations paired 180 deg apart');
+    end
+    D.Xring = [D.Xring(:, 1:h, :); D.Xring(:, h+1:end, :)];
+    D.R = [D.R; D.R .* reshape((-1) .^ D.modes(:, 2), 1, [])];   % e^{-i m (psi + pi)} = (-1)^m e^{-i m psi}
+    D.psi = D.psi(1:h);
+elseif ~strcmp(o.Ring, 'arc')
+    error('fwc_run_trials: unknown Ring %s', o.Ring);
+end
 c = cpr_cfg('arch', 'IC', 'snrdB', 50, over{:});
 fprintf('Section VII trials: %d ports x %d rotations x %d frequencies, m/n %.2f, SNR %d dB, P %d, K %d\n', ...
     size(D.Xring, 1), size(D.Xring, 2), size(D.Xring, 3), c.ratio, c.snrdB, c.P, c.K);
@@ -56,6 +74,8 @@ fprintf('per-frequency score: mean %.1f dB, best %.1f, worst %.1f; constant+dela
     mean(v), min(v), max(v), mean(g), min(g), max(g));
 tag = ''; if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb), tag = sprintf('_az%g_rel%g', o.PerturbAzDeg, o.PerturbRelDb); end
 if strcmp(o.ProbeModel, 'free'), tag = ['_free' tag]; end
+if strcmp(o.Ring, 'arc'), tag = ['_arc' tag]; end
+tag = [tag o.OutTag];
 save(fullfile(cpr_paths().results, ['fwc_trials' tag '.mat']), 'T', 'c', 'o');
 end
 

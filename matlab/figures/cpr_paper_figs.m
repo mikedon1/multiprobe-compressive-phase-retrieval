@@ -70,7 +70,7 @@ switch part
             alt = fullfile(fileparts(cpr_paths().results), 'results_v8');
             if exist(alt, 'dir'), T = load_from(alt, 'pr_basiscmp32'); end
         end
-        if ~isempty(T), basiscmp(F3, T, P('pr3_basiscmp')); end
+        if ~isempty(T), basiscmp(F, T, P('pr3_basiscmp')); end   % full-column 12 x 6 cm, like Fig. 10 (2026-10-21)
         Tsc = [tryload('pr_calerr30'); tryload('pr_calerrsc'); tryload('pr_calerrics'); tryload('pr_calerrrc')];
         if ~isempty(Tsc), calerrsc(F3, Tsc, P('pr3_calerr')); end
 end
@@ -183,19 +183,24 @@ end
 function basiscmp(F, T, file)
 % NMSE vs sampling ratio: colour = architecture, solid = spherical-wave model, dashed = unconstrained 2D Fourier model
 f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
-cur = {'IS_vsh', 'IS', '-', 'IS, spherical-wave'; 'IS_dft', 'IS', '--', 'IS, Fourier'; ...
-       'IC_vsh', 'IC', '-', 'IC, spherical-wave'; 'IC_dft', 'IC', '--', 'IC, Fourier'};
+% IS and IC coincide with the spherical-wave model: IC is drawn dotted and thicker on top of the solid IS line, so both
+% stay visible where they overlap (user, 2026-10-21); the Fourier curves are dashed (IS) and dash-dot (IC)
+cur = {'IS_vsh', 'IS', '-', 'IS, spherical-wave', F.lw; 'IS_dft', 'IS', '--', 'IS, Fourier', F.lw; ...
+       'IC_vsh', 'IC', ':', 'IC, spherical-wave', 2.2; 'IC_dft', 'IC', '-.', 'IC, Fourier', F.lw};
 for i = 1:size(cur, 1)
     s = T(startsWith(T.label, cur{i, 1}), :); if isempty(s), continue; end
     s = sortrows(s, 'ratio');
     [xu, ~, g] = unique(s.ratio); y = accumarray(g, metric(s, 'metric'), [], @mean);
-    h(end+1) = plot(ax, xu, y, cur{i, 3}, 'Color', F.col.(cur{i, 2}), 'LineWidth', F.lw); nm{end+1} = cur{i, 4}; %#ok<AGROW>
+    h(end+1) = plot(ax, xu, y, cur{i, 3}, 'Color', F.col.(cur{i, 2}), 'LineWidth', cur{i, 5}); nm{end+1} = cur{i, 4}; %#ok<AGROW>
 end
 set(ax, 'XScale', 'log', 'XTick', [0.05 0.1 0.2 0.4 0.8]);
 if ~F.paperAxes(), set(ax, 'XTick', unique(T.ratio)); end
 xlim(ax, [min(T.ratio) max(T.ratio)]);
 xlabel(ax, 'sampling ratio {\itm/n}'); ylabel(ax, 'NMSE (dB)');
-legend(ax, h, nm, 'Location', ifelse(F.paperAxes(), 'southwest', 'best')); F.style(ax); F.save(f, file);
+F.style(ax);
+yl = ylim(ax); top = 10*ceil(yl(2)/10); bot = 20*floor(yl(1)/20);   % headroom above the curves (top 10 dB here)
+ylim(ax, [bot - 40, top]); ax.YTick = bot:20:0;                     % empty strip at the bottom for the legend
+legend(ax, h, nm, 'Location', 'south', 'NumColumns', 2); F.save(f, file);
 end
 
 function calerrsc(F, T, file)
@@ -206,21 +211,26 @@ function calerrsc(F, T, file)
 f = F.new(); ax = axes(f); hold(ax, 'on'); h = []; nm = {};
 grp = regexp(T.label, '^[A-Z]+', 'match', 'once');           % IS, IC, ICS, RC
 sc = endsWith(T.label, '_sc');
-cur = {'IS', true, 'IS', '-', 'IS, self-cal.'; 'IC', true, 'IC', '-', 'IC, self-cal.'; ...
-       'ICS', true, 'RS', '-', 'two-pass IC, self-cal.'; 'RC', true, 'RC', '-', 'RC, self-cal.'; ...
-       'IS', false, 'IS', '--', 'IS'; 'IC', false, 'IC', '--', 'IC'};
+% Legend: the four colours only (solid = self-calibration, dashed = without, dotted = conventional; stated in the
+% caption), two columns in a strip below the curves, so it covers no data (user, 2026-10-21).
+cur = {'IS', true, 'IS', '-', 'IS'; 'IC', true, 'IC', '-', 'IC'; ...
+       'ICS', true, 'RS', '-', 'two-pass IC'; 'RC', true, 'RC', '-', 'RC'; ...
+       'IS', false, 'IS', '--', ''; 'IC', false, 'IC', '--', ''};
 for i = 1:size(cur, 1)
     s = T(strcmp(grp, cur{i, 1}) & sc == cur{i, 2} & T.calErrDeg > 0, :); if isempty(s), continue; end
     [xu, ~, g] = unique(s.calErrDeg); y = accumarray(g, s.global, [], @mean);
-    h(end+1) = plot(ax, xu, y, cur{i, 4}, 'Color', F.col.(cur{i, 3}), 'LineWidth', F.lw); nm{end+1} = cur{i, 5}; %#ok<AGROW>
+    hi = plot(ax, xu, y, cur{i, 4}, 'Color', F.col.(cur{i, 3}), 'LineWidth', F.lw);
+    if ~isempty(cur{i, 5}), h(end+1) = hi; nm{end+1} = cur{i, 5}; end %#ok<AGROW>
 end
 fk = linspace(1.90, 2.65, 16); fc = mean(fk);
 xr = linspace(0.5, max(T.calErrDeg), 60);
 yc = arrayfun(@(sd) 10*log10(mean(2*(1 - exp(-((sd*pi/180)*fk/fc).^2/2)))), xr);
-h(end+1) = plot(ax, xr, yc, ':', 'Color', [0.4 0.4 0.4], 'LineWidth', 1); nm{end+1} = 'conventional';
+plot(ax, xr, yc, ':', 'Color', [0.4 0.4 0.4], 'LineWidth', 1);
 xlim(ax, [0 max(T.calErrDeg)]);
 xlabel(ax, 'rms cable phase error \sigma_\phi (deg)'); ylabel(ax, 'NMSE (dB)');
-legend(ax, h, nm, 'Location', 'southeast', 'FontSize', 7); F.style(ax); F.save(f, file);
+F.style(ax);
+yl = ylim(ax); ylim(ax, [yl(1) - 15, yl(2)]); ax.YTick = ceil(yl(1)/10)*10 : 10 : floor(yl(2)/10)*10;
+legend(ax, h, nm, 'Location', 'south', 'NumColumns', 2); F.save(f, file);
 end
 
 function T = load_from(dirName, study)
