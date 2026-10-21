@@ -12,7 +12,7 @@ error('fwc_check_solveA:obsolete', 'written for the old 20-90 deg ring; see the 
 % DESCENDING (cross = E_phi'). Rotation psi multiplies mode (l, m) by exp(-1i*sense*m*psi).
 % Reports, per sense and polarization, the NMSE (dB) with one gain per probe and frequency, and with one
 % gain per frequency only (no probe calibration at all).
-R0 = 'C:\Users\miked\Projects\cpr-multiprobe-antenna\sim\hfss\results';
+R0 = getenv('CPR_HFSS'); if isempty(R0), R0 = fullfile(cpr_paths().data, 'hfss_fullarc'); end
 if nargin < 1 || isempty(ffFile), ffFile = fullfile(R0, 'autalone_farfield.csv'); end
 if nargin < 2 || isempty(sGlob), sGlob = fullfile(R0, 'sweep_dualpol_rot*.s33p'); end
 if nargin < 3, L = 12; end

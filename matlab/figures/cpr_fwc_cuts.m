@@ -15,7 +15,9 @@ if nargin < 2 || isempty(thetaCut), thetaCut = 90; end
 if nargin < 3 || isempty(phiCut), phiCut = 0; end
 outDir = cpr_paths().results; pDir = fullfile(outDir, 'figs', 'paper');
 if ~exist(pDir, 'dir'), mkdir(pDir); end
-S = load(fullfile(outDir, 'fwc_validation.mat')); V = S.V;
+vFile = fullfile(outDir, 'fwc_validation.mat');
+if ~exist(vFile, 'file'), vFile = fullfile(cpr_paths().data, 'fullwave', 'fwc_validation.mat'); end   % released data
+S = load(vFile); V = S.V;
 Tr = load(fullfile(outDir, 'fwc_trials.mat')); T = Tr.T;
 sc = arrayfun(@(t) t.nmse.perfreqScale, T); [~, iw] = max(sc); tr = T(iw);
 [~, k] = min(abs(V.freq - fGHz*1e9));

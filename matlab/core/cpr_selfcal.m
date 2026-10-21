@@ -15,13 +15,19 @@ function [Phi, d, info, g] = cpr_selfcal(ent, x, y, lam, d, nGN, sigL, opts)
 %          drift: every cable longer by the same fraction; needs opts.Lcal, the calibrated lengths per port, cm)
 %   gain   true: also one log-amplitude g per port (prior opts.sigG, natural log; NaN/absent = none)
 %   g      current log-amplitudes (default zeros)
+%   projectAfter  true (default): the step used for the paper's results (solve the damped normal equations, then
+%          subtract the mean of the step); false: the constrained Gauss-Newton step, solved on an orthonormal basis Q
+%          of zero-mean corrections, step = -Q (Q' H Q + mu I) \ Q' grad (round-8 review). At sigma 5 deg, seed 1, the
+%          two differ by at most 0.15 dB (IC -30.31/-30.46, two-pass IC -33.39/-33.45, IS -32.31/-32.28; diag_selfcal)
 % Returns the re-phased matrix, the new d (and g), and info (residual before/after, dB).
 if nargin < 6 || isempty(nGN), nGN = 5; end
 if nargin < 7, sigL = NaN; end
 if nargin < 8, opts = struct(); end
 model = 'length'; if isfield(opts, 'model'), model = opts.model; end
 useG = isfield(opts, 'gain') && opts.gain;
+projectAfter = ~isfield(opts, 'projectAfter') || opts.projectAfter;   % paper's step (solve, then subtract the mean)
 lam = lam(:); nP = ent.nPorts; m = ent.m;
+Q = null(ones(1, nP));                               % orthonormal basis of zero-mean per-port corrections
 g = zeros(nP, 1); if isfield(opts, 'g') && ~isempty(opts.g), g = opts.g(:); end
 k = 1i*2*pi ./ lam(ent.tone);                        % d(phase)/d(length) per entry
 k = k(:);
@@ -53,9 +59,18 @@ for it = 1:nGN
     end
     nq = size(H, 1);
     mu = 1e-6 * full(sum(diag(H))) / nq + eps;
-    step = -((H + mu*speye(nq)) \ gr);
-    if strcmp(model, 'drift'), sd = step(1) * Lc; ns = 1; else, sd = step(1:nP) - mean(step(1:nP)); ns = nP; end
-    sg = zeros(nP, 1); if useG, sg = step(ns+1:end); sg = sg - mean(sg); end
+    if strcmp(model, 'drift')                       % one parameter; Lc already has zero mean
+        step = -((H + mu*speye(nq)) \ gr); sd = step(1) * Lc; ns = 1; sg = zeros(nP, 1);
+        if useG, sg = step(ns+1:end); sg = sg - mean(sg); end
+    elseif projectAfter                             % paper's step: solve, then remove the mean
+        step = -((H + mu*speye(nq)) \ gr); sd = step(1:nP) - mean(step(1:nP)); ns = nP;
+        sg = zeros(nP, 1); if useG, sg = step(ns+1:end); sg = sg - mean(sg); end
+    else                                            % constrained Gauss-Newton step in the zero-mean subspace (2026-10-21)
+        Qb = Q; if useG, Qb = blkdiag(Q, Q); end
+        Hq = full(Qb' * H * Qb); Hq = (Hq + Hq')/2;
+        stepq = -((Hq + mu*eye(size(Hq, 1))) \ (Qb' * gr)); step = Qb * stepq;
+        sd = step(1:nP); sg = zeros(nP, 1); if useG, sg = step(nP+1:end); end
+    end
     t = 1; improved = false;
     while t > 1/64
         dn = d + t*sd; gn = g + t*sg; cn = cost(dn, gn);

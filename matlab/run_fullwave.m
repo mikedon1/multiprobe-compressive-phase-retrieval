@@ -1,17 +1,15 @@
 function run_fullwave()
-%RUN_FULLWAVE  Section VI: HFSS data checks, reference-dipole leg calibration, ten calibrated trials
-%(and the same trials without calibration), then the cut figures. Settings: cpr_settings.m.
-%Data: data/hfss (32 rotations of the 20-port HFSS model and the reference-dipole solve).
+%RUN_FULLWAVE  Section VII: ten trials of the emulated full ring with embedded-probe calibration (HFSS data), the four
+%perturbed-calibration runs (three trials each), then the cut figures. Settings: cpr_settings.m.
+%Data: data/fullwave/fwc_validation.mat (processed HFSS data: free-space AUT coefficients, embedded probe responses,
+%solved ring data). fwc_validate_hfss rebuilds it from the raw HFSS exports (data/hfss_fullarc or CPR_HFSS).
+%The earlier leg-probe model (cpr_fw_trials, data/hfss) is kept in matlab/fullwave but is not used by the paper.
 cpr_setup();
 S = cpr_settings();
-cpr_fw_diag();                                   % reads the Touchstone files, writes fw_data_hfss.mat
-fw_cal_reference();                              % leg calibration factors G (reference-dipole solve)
-cal = fullfile(cpr_paths().results, 'fw_cal_reference.mat');
-cpr_fw_trials(1:S.trials.fullwave, 'calop', 'CalFile', cal);
-cpr_fw_trials(1:S.trials.fullwave, 'uncal');
-Rt = load(fullfile(cpr_paths().results, 'fw_trials_calop.mat')); R = Rt.R;
-sc = [R.score]; [~, i] = max([sc.global]);               % the worst calibrated trial is the one plotted
-Dl = load(fullfile(cpr_paths().results, 'fw_data_hfss.mat'));
-nf = size(R(i).Xh, 3);
-cpr_fw_cuts('calop', R(i).seed, mean(Dl.D.f(1:nf))/1e9);
+fwc_run_trials(1:S.trials.fullwave);                         % -> <results>/fwc_trials.mat (main and constant+delay scores)
+fwc_run_trials(1:3, 'PerturbAzDeg', 0.5);
+fwc_run_trials(1:3, 'PerturbAzDeg', 1);
+fwc_run_trials(1:3, 'PerturbRelDb', -40);
+fwc_run_trials(1:3, 'PerturbRelDb', -30);
+cpr_fwc_cuts();                                              % worst trial, azimuth and elevation cuts at 2.725 GHz
 end
