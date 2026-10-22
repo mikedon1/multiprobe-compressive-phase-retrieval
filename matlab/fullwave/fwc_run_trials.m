@@ -17,7 +17,9 @@ p.addParameter('PerturbRelDb', -inf); % random complex error of every embedded-r
 p.addParameter('PerturbSeed', 1);
 p.addParameter('ProbeModel', 'embedded'); % 'embedded' (the paper) | 'free': ideal point probes, no coupling (fwc_free_resp)
 p.addParameter('OutTag', '');         % appended to the output file name (parallel workers on disjoint seeds; merge after)
-p.addParameter('Ring', 'full');       % 'full' (the paper, 2026-10-21): the arch at psi + 180 deg is the far half of a full
+p.addParameter('RingDir', fullfile(cpr_paths().data, 'hfss_fullring'));   % 'true' ring: folder with sweep_fullring_rot*.s65p + fullring_port_map.csv
+p.addParameter('Ring', 'full');       % 'true' (2026-10-22): the TRUE full ring from the 65-port HFSS model (see RingDir);
+                                      % 'full' (the paper, 2026-10-21): the arch at psi + 180 deg is the far half of a full
                                       %   ring at psi, so the 32 computed rotations form a 64-port ring at 16 rotations
                                       %   (coupling between the two halves is not in the single-arch HFSS model);
                                       %   'arc': the one-sided arch at 32 rotations (fails for the dipole AUT, see
@@ -58,6 +60,11 @@ if strcmp(o.Ring, 'full')                     % emulated full ring: ports [arch;
     D.Xring = [D.Xring(:, 1:h, :); D.Xring(:, h+1:end, :)];
     D.R = [D.R; D.R .* reshape((-1) .^ D.modes(:, 2), 1, [])];   % e^{-i m (psi + pi)} = (-1)^m e^{-i m psi}
     D.psi = D.psi(1:h);
+elseif strcmp(o.Ring, 'true')                 % TRUE full ring (65-port HFSS model): measured far-half ports, 16 rotations over 180 deg
+    Tr = fwc_ring_true(V, o.RingDir);
+    if numel(Tr.psi) ~= 16 || any(abs(Tr.psi - (0:15) * pi/16) > 1e-6), error('fwc_run_trials: Ring true needs the 16 rotations psi = 0:11.25:168.75 deg'); end
+    D.Xring = Tr.Xring; D.psi = Tr.psi;
+    D.R = [D.R; D.R .* reshape((-1) .^ D.modes(:, 2), 1, [])];   % far-half responses from the 180-deg symmetry (calibration: arch only)
 elseif ~strcmp(o.Ring, 'arc')
     error('fwc_run_trials: unknown Ring %s', o.Ring);
 end
@@ -78,6 +85,7 @@ fprintf('per-frequency score: mean %.1f dB, best %.1f, worst %.1f; constant+dela
 tag = ''; if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb), tag = sprintf('_az%g_rel%g', o.PerturbAzDeg, o.PerturbRelDb); end
 if strcmp(o.ProbeModel, 'free'), tag = ['_free' tag]; end
 if strcmp(o.Ring, 'arc'), tag = ['_arc' tag]; end
+if strcmp(o.Ring, 'true'), tag = ['_true' tag]; end
 tag = [tag o.OutTag];
 save(fullfile(cpr_paths().results, ['fwc_trials' tag '.mat']), 'T', 'c', 'o');
 end
