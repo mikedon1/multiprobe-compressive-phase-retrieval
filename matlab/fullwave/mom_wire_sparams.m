@@ -74,7 +74,16 @@ for ifq = 1:nf
 end
 nodePos = zeros(N, 3);
 for n = 1:N, nodePos(n, :) = st(pd(n), :); end
-info = struct('portNode', portNode, 'wireOfNode', nodeW, 'nodePos', nodePos, 'nodeDir', tdir(pr, :), 'N', N, 'segments', Sg, 'Z', Zall);
+segNodeL = zeros(Sg, 1); segNodeR = zeros(Sg, 1);                           % node (index into the unknowns) at the start / end of each segment, 0 at a wire end
+for w = 1:nw
+    nodeFirst = find(nodeW == w, 1);
+    for i = 1:M(w)
+        if i >= 2, segNodeL(segoff(w) + i) = nodeFirst + i - 2; end
+        if i <= M(w) - 1, segNodeR(segoff(w) + i) = nodeFirst + i - 1; end
+    end
+end
+info = struct('portNode', portNode, 'wireOfNode', nodeW, 'nodePos', nodePos, 'nodeDir', tdir(pr, :), 'N', N, 'segments', Sg, 'Z', Zall, ...
+    'segStart', st, 'segDir', tdir, 'segLen', dl, 'segWire', wof, 'segNodeL', segNodeL, 'segNodeR', segNodeR);
 end
 
 function [rr, rd, dr, dd, g] = nearpair(sp, tp, Dp, sq, tq, Dq, a, k, u, w)
