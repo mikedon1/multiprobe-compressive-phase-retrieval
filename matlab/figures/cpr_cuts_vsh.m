@@ -54,62 +54,11 @@ C.mE = cellfun(@(v) errdB(v, elT), elR, 'UniformOutput', false);
 C.pT = angle(elT)*180/pi;
 C.pR = cellfun(@(v) angle(v)*180/pi, elR, 'UniformOutput', false);
 C.pE = cellfun(@(v) wrapdeg(angle(v) - angle(elT)), elR, 'UniformOutput', false);
-make_fig4(C, fullfile(pDir, outName));
+cpr_cut_panels(C, fullfile(pDir, outName));
 comp = {'along the scan circle', 'across the scan circle'};
 info.component = comp{q}; info.nmse = cellfun(@(e) e.global, E); info.ratios = ratios;
 info.freqNMSE = cellfun(@(e) 20*log10(norm(reshape(e.Xh(:,:,[k, nd+k]) - X(:,:,[k, nd+k]), [], 1)) / ...
     norm(reshape(X(:,:,[k, nd+k]), [], 1))), E);
 fprintf('%s: component %s, cut at %s, NMSE %s dB (whole), %s dB at frequency %d\n', outName, info.component, ...
     info.cutAt, mat2str(round(info.nmse, 1)), mat2str(round(info.freqNMSE, 1)), k);
-end
-
-function make_fig4(S, outBase)
-W = 12; H = 10.5; left = 1.6; right = 0.1; top = 0.2; bottom = 1.0; gap = 0.3; legGap = 0.25;
-lw = 1; lwRec = 1.6;
-cTruth = [0 0.4470 0.7410]; cRec = [0.8500 0.3250 0.0980; 0.9290 0.6940 0.1250]; ls = {'--', '-.'};
-fig = figure('Visible','on','Units','centimeters','Position',[2 2 W H], 'Color','w');
-set(fig, 'PaperUnits','centimeters', 'PaperSize',[W H], 'PaperPosition',[0 0 W H]);
-boxH = (H - top - bottom - 3*gap) / 4;
-y = @(k) bottom + (4 - k)*(boxH + gap);
-w0 = W - left - right - 3;
-ax = gobjects(1, 4);
-for k = 1:4, ax(k) = axes('Units','centimeters','Position',[left, y(k), w0, boxH]); hold(ax(k), 'on'); end
-hT = plot(ax(1), S.theta, S.mT, 'Linewidth', lw, 'color', cTruth);
-hP = plot(ax(3), S.theta, S.pT, 'Linewidth', lw, 'color', cTruth);
-hR = gobjects(1, numel(S.mR));
-for i = 1:numel(S.mR)
-    hR(i) = plot(ax(1), S.theta, S.mR{i}, ls{i}, 'Linewidth', lwRec, 'color', cRec(i, :));
-    plot(ax(2), S.theta, S.mE{i}, ls{i}, 'Linewidth', 1.2, 'color', cRec(i, :));
-    plot(ax(3), S.theta, S.pR{i}, ls{i}, 'Linewidth', lwRec, 'color', cRec(i, :));
-    plot(ax(4), S.theta, S.pE{i}, ls{i}, 'Linewidth', 1.2, 'color', cRec(i, :));
-end
-uistack(hT, 'top'); uistack(hP, 'top');
-ylabel(ax(1), '$\left| E \right|$ (dB)', 'Interpreter', 'latex');
-ylabel(ax(2), '$\left|\mathrm{Error}\right|$ (dB)', 'Interpreter', 'latex');
-ylabel(ax(3), '$\angle E$ ($^\circ$)', 'Interpreter', 'latex');
-ylabel(ax(4), 'Error ($^\circ$)', 'Interpreter', 'latex');
-ylim(ax(3), [-180 180]); ax(3).YTick = -180:90:180;
-for k = 1:4, xlim(ax(k), S.thetaLim); box(ax(k), 'on'); end
-for k = 1:3, ax(k).XTickLabel = []; end
-for k = [1 2 4], more_yticks(ax(k)); end
-xlabel(ax(4), S.xlab, 'Interpreter', 'latex');
-lg = legend(ax(1), [hT hR], [{'Truth'}, S.nm]); drawnow
-lg.Units = 'centimeters'; legW = 1.08*lg.Position(3);
-boxW = W - left - right - legW - legGap;
-for k = 1:4, ax(k).Position = [left, y(k), boxW, boxH]; end
-lg.Position(3) = legW; lg.Position(1:2) = [left + boxW + legGap, y(1) + boxH - lg.Position(4)];
-saveas(fig, outBase, 'pdf'); fprintf('wrote %s.pdf\n', outBase);
-end
-
-function more_yticks(ax)
-drawnow; yl = ax.YLim;
-for s = [1 2 5 10 20 50 100 0.5 4]
-    t = ceil(yl(1)/s - 1e-9)*s : s : yl(2) + 1e-9;
-    if numel(t) >= 4 && numel(t) <= 6, ax.YTick = t; return; end
-    lo = floor(yl(1)/s)*s; hi = ceil(yl(2)/s)*s;
-    n = round((hi - lo)/s) + 1;
-    if n >= 4 && n <= 6 && yl(1) - lo < s/3 && hi - yl(2) < s/3
-        ax.YLim = [lo hi]; ax.YTick = lo:s:hi; return;
-    end
-end
 end
