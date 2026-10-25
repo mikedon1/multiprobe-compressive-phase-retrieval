@@ -40,7 +40,7 @@ if strcmp(o.ProbeModel, 'free')
     D.R = fwc_free_resp(V);
     fprintf('probe model: FREE SPACE (ideal point probes, no coupling)\n');
 end
-if o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb)
+if (o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb)) && ~(strcmp(o.Ring, 'true') && strcmp(o.RingCal, 'ring'))   % ring calibration: perturbed below, after it is set
     rs = RandStream('mt19937ar', 'Seed', 7000 + o.PerturbSeed);
     [np, nm, nf] = size(D.R);
     if o.PerturbAzDeg > 0                     % a probe moved by delta in phi = the AUT turned by -delta: e^{+i m delta}
@@ -69,6 +69,7 @@ elseif strcmp(o.Ring, 'true')                 % TRUE full ring (65-port HFSS mod
     D.Xring = Tr.Xring; D.psi = Tr.psi;
     D.R = [D.R; D.R .* reshape((-1) .^ D.modes(:, 2), 1, [])];   % far-half responses from the 180-deg symmetry (calibration: arch only)
     if strcmp(o.RingCal, 'ring'), D.R = Tr.Rring; end              % calibration of the full ring alone (RingData with field Rring)
+    if strcmp(o.RingCal, 'ring') && (o.PerturbAzDeg > 0 || isfinite(o.PerturbRelDb)), D.R = perturbRing(D.R, V, D.modes, o); end   % the 64 measured rows, each position of each half independently
 elseif ~strcmp(o.Ring, 'arc')
     error('fwc_run_trials: unknown Ring %s', o.Ring);
 end
@@ -97,4 +98,20 @@ end
 function nv = struct2nv(s)
 f = fieldnames(s); nv = cell(1, 2*numel(f));
 for i = 1:numel(f), nv{2*i-1} = f{i}; nv{2*i} = s.(f{i}); end
+end
+
+function R = perturbRing(R, V, modes, o)
+% calibration errors of the ring calibration (64 rows): an rms azimuthal position error of each position (both ports of a position share it,
+% the two halves are independent) and a random complex error of every entry, relative to the rms response of its port
+rs = RandStream('mt19937ar', 'Seed', 7000 + o.PerturbSeed); [np, nm, nf] = size(R);
+if o.PerturbAzDeg > 0
+    ri = [V.map.ring_index(:); V.map.ring_index(:) + 1000]; [u, ~, iu] = unique(ri);
+    dPos = (o.PerturbAzDeg*pi/180) * randn(rs, numel(u), 1); dP = dPos(iu);
+    R = R .* exp(1i * dP .* reshape(modes(:, 2), 1, nm));
+end
+if isfinite(o.PerturbRelDb)
+    sc = sqrt(mean(abs(R).^2, [2 3])); E = (randn(rs, np, nm, nf) + 1i*randn(rs, np, nm, nf)) / sqrt(2);
+    R = R + 10^(o.PerturbRelDb/20) * sc .* E;
+end
+fprintf('calibration perturbed (ring rows): azimuth %.2f deg rms, entries %.0f dB\n', o.PerturbAzDeg, o.PerturbRelDb);
 end
