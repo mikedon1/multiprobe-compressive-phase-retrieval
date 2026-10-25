@@ -17,7 +17,8 @@ if strcmp(mdl, 'lowpass') && bw <= 0, return, end
 if strcmp(mdl, 'boxcar') && ti <= 0, return, end
 if ~isfield(S.ent, 'vTrue'), error('cpr_detector: S.ent.vTrue missing (make_readings of 2026-10-25 or later)'); end
 e = S.ent; nd = numel(f); f = f(:);
-v = e.vTrue .* x(e.j);\nu = accumarray([e.i, e.tone], real(v), [S.m, nd]) + 1i * accumarray([e.i, e.tone], imag(v), [S.m, nd]);   % m x nd tone components
+v = e.vTrue .* x(e.j);
+u = accumarray([e.i, e.tone], real(v), [S.m, nd]) + 1i * accumarray([e.i, e.tone], imag(v), [S.m, nd]);   % m x nd tone components
 D = f - f.';                                                                % D(k, k') = f_k - f_k'
 switch mdl
     case 'lowpass', H = 1 ./ (1 + 1i * D / (bw * 1e9));
