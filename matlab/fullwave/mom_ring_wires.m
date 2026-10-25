@@ -22,6 +22,7 @@ for h = 1:numel(halves)
         th = (15 + 10*i)*pi/180; ph = sg*th;                                 % position angle in the y-z plane, from +y toward +z
         for pol = {'theta', 'phi'}
             if strcmp(pol{1}, 'theta'), R = 1.00; ax = [0 -sin(ph) cos(ph)]; else, R = 1.01; ax = [1 0 0]; end
+            ax = sg * ax;                                                    % far half: the near wire turned 180 deg about y (x -> -x, z -> -z), as the HFSS copy
             c = [0 R*cos(ph) R*sin(ph)];
             wires(end+1) = struct('A', (c - Lp/2*ax).', 'B', (c + Lp/2*ax).', 'a', a, 'M', Mp); %#ok<AGROW>
             lab(end+1) = struct('kind', 'probe', 'half', halves{h}, 'pol', pol{1}, 'idx', i); %#ok<AGROW>

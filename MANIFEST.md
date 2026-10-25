@@ -34,6 +34,22 @@ the paper uses them as `pr3_<name>.pdf`.
 Seeds: every sweep point is one trial with seed 1 unless the study says otherwise; the Section VII trials use seeds
 1 to 10 and the perturbed runs seeds 1 to 3. Figures 1, 2 and 8 are drawings and a model screenshot.
 
-Not in this repository: the sampling-geometry and identifiability diagnostics of the supplement (Section S5),
-the larger-array restarts started at the true pattern (Section VI-C), and the HFSS build scripts. They are
-diagnostic scripts run once; ask the author for them.
+Diagnostics of the supplement (Section S5), in matlab/diagnostics/ (run from MATLAB with that folder on the path; each
+script changes to the repository root and calls setup itself):
+
+| Supplement item | Script |
+|---|---|
+| Identifiability margins of the span, rotation phases and IC cable lengths (Table S4) | ident_margins, ident_spec |
+| Counterexample fields, structured rotation phases, orthonormalization factor, compressed-regime local tests (Table S4 text) | ound7_checks(part), parts 1 to 5 |
+| Margin against grid sampling, role of the pole samples | grid_margin, pole_check |
+| Sampling geometry against recovery (one-sided arch, full ring, polar coverage), Section VII pipeline with ideal probes | diag_geo, diag_geo2, diag_geo3, diag_t1c |
+
+The Section VII polish (wc_polish, option Polish of wc_run_trials) is off by default.
+
+Not in this repository (the archive of the paper, which has a DOI, holds them): the raw HFSS exports and projects
+of the full-wave model and the HFSS build scripts. The larger-array restarts started at the true pattern
+(Section VI-C) are a diagnostic run once with cpr_prgamp options; ask the author for the driver.
+
+Moment-method data for Section VII (`matlab/fullwave/`): `mom_wire_sparams` (thin-wire solver), `mom_ring_wires` (geometry), `mom_make_validation` (arch data: transmissions, AUT modes, embedded responses, model check), `mom_make_ring` (true full ring of 64 probes, 16 rotations over 180 deg, with the embedded responses of the ring alone; use with `fwc_run_trials(..., 'Ring', 'true', 'RingData', Tm, 'RingCal', 'ring' or 'arch')`). The refinement of the Section VII estimates is `fwc_polish` (option `Polish` of `fwc_run_trials`, default off).
+
+`fwc_ring_calibration` builds the 64-port embedded-response calibration of the full ring alone from the near-field exports of the ring-alone HFSS solve (near ports measured, far ports by the exact 180-degree symmetry); use it as `T.Rring` with `fwc_run_trials(..., 'Ring', 'true', 'RingData', T, 'RingCal', 'ring')`.

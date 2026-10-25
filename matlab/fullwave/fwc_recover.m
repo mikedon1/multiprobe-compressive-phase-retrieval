@@ -40,6 +40,11 @@ o.reset = @() A.setM(cpr_basis(c.basis, D.f, 0));
 if c.gauge && nf > 1, o.gauge = @(e) cpr_gauge(e, A, 'delay', D.f, c.basis, S.rowTone); end
 t0 = tic;
 [ah, info] = feval(c.solver, abs(z + w), A, o);
+if isfield(D, 'polish') && D.polish          % optional refinement of the PR-GAMP estimate (fwc_polish, Section VII only)
+    ahRaw = reshape(ah, nm, nf);
+    [ah, pinfo] = fwc_polish(A, abs(z + w), ah, 'Seed', seed);
+    r.aHatRaw = ahRaw; r.polish = pinfo; r.nmse.rawPerfreqScale = score(D.aTrue, ahRaw, 'scale');
+end
 r.cfg = c; r.seed = seed; r.time = toc(t0); r.info = info; r.m = S.m; r.n = numel(D.Xring);
 ah = reshape(ah, nm, nf); r.aHat = ah;
 r.nmse.perfreqScale = score(D.aTrue, ah, 'scale');

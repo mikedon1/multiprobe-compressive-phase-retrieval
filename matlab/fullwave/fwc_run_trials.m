@@ -24,6 +24,9 @@ p.addParameter('Ring', 'full');       % 'true' (2026-10-22): the TRUE full ring 
                                       %   (coupling between the two halves is not in the single-arch HFSS model);
                                       %   'arc': the one-sided arch at 32 rotations (fails for the dipole AUT, see
                                       %   results_vsh/drivers/diag_geo.m and the supplement's sampling-geometry table)
+p.addParameter('RingData', []);       % 'true' ring: struct with Xring, psi (rad) [, Rring] instead of the HFSS files (mom_make_ring)
+p.addParameter('RingCal', 'arch');    % 'true' ring calibration: 'arch' (arch response + 180-deg symmetry) | 'ring' (RingData.Rring, ring alone)
+p.addParameter('Polish', false);      % true (2026-10-23): refine each PR-GAMP estimate with fwc_polish (held-out stopping), default off
 p.parse(varargin{:});
 over = struct2nv(p.Unmatched);
 V = p.Results.Validation;
@@ -31,7 +34,7 @@ vFile = fullfile(cpr_paths().data, 'fullwave', 'fwc_validation.mat');   % proces
 if isempty(V) && exist(vFile, 'file'), S = load(vFile); V = S.V; end
 if isempty(V), V = fwc_validate_hfss(); end                              % from the raw exports (data/hfss_fullarc)
 D = struct('Xring', V.Smeas, 'R', V.R, 'modes', V.A.modes, 'psi', V.psi(:).' * pi/180, 'f', V.freq(:).', ...
-    'aTrue', V.A.a);
+    'aTrue', V.A.a, 'polish', p.Results.Polish);
 o = p.Results;
 if strcmp(o.ProbeModel, 'free')
     D.R = fwc_free_resp(V);
@@ -61,21 +64,22 @@ if strcmp(o.Ring, 'full')                     % emulated full ring: ports [arch;
     D.R = [D.R; D.R .* reshape((-1) .^ D.modes(:, 2), 1, [])];   % e^{-i m (psi + pi)} = (-1)^m e^{-i m psi}
     D.psi = D.psi(1:h);
 elseif strcmp(o.Ring, 'true')                 % TRUE full ring (65-port HFSS model): measured far-half ports, 16 rotations over 180 deg
-    Tr = fwc_ring_true(V, o.RingDir);
+    if ~isempty(o.RingData), Tr = o.RingData; else, Tr = fwc_ring_true(V, o.RingDir); end   % RingData: e.g. mom_make_ring (moment-method ring)
     if numel(Tr.psi) ~= 16 || any(abs(Tr.psi - (0:15) * pi/16) > 1e-6), error('fwc_run_trials: Ring true needs the 16 rotations psi = 0:11.25:168.75 deg'); end
     D.Xring = Tr.Xring; D.psi = Tr.psi;
     D.R = [D.R; D.R .* reshape((-1) .^ D.modes(:, 2), 1, [])];   % far-half responses from the 180-deg symmetry (calibration: arch only)
+    if strcmp(o.RingCal, 'ring'), D.R = Tr.Rring; end              % calibration of the full ring alone (RingData with field Rring)
 elseif ~strcmp(o.Ring, 'arc')
     error('fwc_run_trials: unknown Ring %s', o.Ring);
 end
 c = cpr_cfg('arch', 'IC', 'snrdB', 50, over{:});
 fprintf('Section VII trials: %d ports x %d rotations x %d frequencies, m/n %.2f, SNR %d dB, P %d, K %d\n', ...
     size(D.Xring, 1), size(D.Xring, 2), size(D.Xring, 3), c.ratio, c.snrdB, c.P, c.K);
-T = struct('seed', {}, 'nmse', {}, 'time', {}, 'numTry', {}, 'aHat', {}, 'perfreqFactor', {});
+T = struct('seed', {}, 'nmse', {}, 'time', {}, 'numTry', {}, 'aHat', {}, 'perfreqFactor', {}, 'nres_dB', {}, 'log', {});
 for s = seeds
     r = fwc_recover(c, s, D);
     T(end+1) = struct('seed', s, 'nmse', r.nmse, 'time', r.time, 'numTry', r.info.numTry, 'aHat', r.aHat, ...
-        'perfreqFactor', r.perfreqFactor); %#ok<AGROW>
+        'perfreqFactor', r.perfreqFactor, 'nres_dB', r.info.nres_dB, 'log', r.info.log); %#ok<AGROW>   % accepted residual and per-restart log (review item 6.2)
     fprintf('  seed %2d: per-frequency %.1f dB, constant+delay %.1f dB, global phase %.1f dB, %d tries, %.0f s\n', ...
         s, r.nmse.perfreqScale, r.nmse.globalDelay, r.nmse.globalPhase, r.info.numTry, r.time);
 end
