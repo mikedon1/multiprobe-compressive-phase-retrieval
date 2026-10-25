@@ -24,6 +24,9 @@ c.cableMaxCm = 50;          % cable lengths ~ U(0, cableMaxCm) cm, drawn at rand
 c.snrdB      = 100;         % near-noiseless base; the SNR sweep varies it
 c.calErrDeg  = 0;           % cable calibration error, rms phase at the band centre (deg; data use the true phases)
 c.calErrModel = 'length';   % 'length': a fixed length error per port (phase error grows with frequency);
+                            %   'drift': thermal drift (dL proportional to the cable length)
+                            %   'smooth' (2026-10-25): dL varies smoothly with the ring position (first three harmonics),
+                            %   the same for both polarizations of a probe, zero mean (the common length is a gauge)
                             %   'tone': independent per port and tone (earlier versions)
 c.selfCal    = false;       % phaseless VSH runs: estimate a cable length correction per port during recovery
 c.selfCalStart = 2;         %   first EM update after which the calibration is re-estimated
@@ -35,6 +38,16 @@ c.selfCalPriorGainDb = NaN; %   expected rms gain error (dB) for its MAP prior; 
 c.calGainDb  = 0;           % fixed gain error per port in the data, rms dB (0 = none)
 c.jitterPs   = 0;           % phaseless: rms error of the detector sample times (ps), random per sample, in the data
                             %   only (the solver assumes the nominal times); a fixed offset would be a common delay
+c.detBwGHz   = 0;           % phaseless (2026-10-25): finite detector response in the data only, applied to every beat note
+                            %   of two tones at frequency difference D as a factor H(D); 0 = ideal square-law detector.
+                            %   c.detModel 'lowpass': H = 1/(1 + iD/B) with the 3 dB bandwidth B = detBwGHz (a delay
+                            %   that the solver does not know); 'boxcar': centered integration over detIntPs,
+                            %   H = sinc(D T) (real; an uncentered window would add a known delay). Noise is not filtered.
+c.detIntPs   = 0;           %   integration time T (ps) for detModel 'boxcar' (with 'lowpass' ignored)
+c.detModel   = 'lowpass';   %   'lowpass' | 'boxcar'
+c.calDispDeg  = 0;           % phase error quadratic in frequency, per port (random sign and size), rms in deg at the band edges,
+                            %   in the data only (cable dispersion, not a length error); 0 = none
+c.calGainModel = 'random';  % 'random': independent gain error per port | 'smooth': smooth with the ring position, as 'smooth' lengths
 c.portRule   = 'random';    % 'random': P ports drawn at random per reading; 'pairs': deterministic pairs (P = 2), round-7 control
 c.icShift    = 1;           % IC calibration step: theta samples the ring is turned for part of the readings
 c.icShiftFrac = 0;          %   fraction of the readings taken with the turned ring (0 = plain IC)

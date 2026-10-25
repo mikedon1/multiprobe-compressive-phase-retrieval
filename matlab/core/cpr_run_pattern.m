@@ -40,6 +40,7 @@ switch c.meas
         end
         if isfield(c, 'logRestarts') && c.logRestarts, o.scoreFn = @(xp) vec_score(X, xp, c.nd, c.npol); end
         y = abs(z + w);
+        y = cpr_detector(c, S, x, z, w, f);                 % finite detector response (default off: y unchanged)
         selfCal = isfield(c, 'selfCal') && c.selfCal;
         if selfCal
             % self-calibration: after each EM update from c.selfCalStart on, re-estimate one cable length

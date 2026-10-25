@@ -20,6 +20,9 @@ function J = cpr_jobs(study)
 %   pr_calerr        sensitivity to rms cable phase errors in the data (IS and IC): Section V-C
 %   pr_calerrsc      pr_calerr with self-calibration (30 EM updates); pr_calerr30 = its control without
 %   pr_jitter        detector timing jitter (IS and IC); pr_nosparse  band-limit-only ablation (no sparsity prior)
+%   pr_detbw         (NOT queued, 2026-10-25) finite detector bandwidth / integration time in the data (IS, IC; tones from the
+%                    whole band or an 8-bin window)
+%   pr_smooth        (NOT queued, 2026-10-25) structured calibration errors: lengths and gains smooth along the arch, cable dispersion
 %   smoke            two tiny jobs, to check that the code runs
 S = cpr_settings();
 J = struct('study', {}, 'label', {}, 'over', {}, 'seed', {}, 'cost', {}, 'saveXh', {});
@@ -258,6 +261,43 @@ switch tok{2}
         % at the base values (tones drawn from the whole band, beat frequencies up to 750 MHz)
         for a = {'IS', 'IC'}, for jp = [1 3 10 30 100]
             J = add(J, study, sprintf('%s_jit%gps', a{1}, jp), [meas cap {'arch',a{1},'jitterPs',jp}], sw);
+        end, end
+    case 'detbw'
+        % (NOT queued, ask) finite detector response in the data only (cpr_detector): a first-order low-pass with 3 dB bandwidth B
+        % (Inf = ideal) and a centered integration window T, IS and IC at the base values; tones from the whole band (beats up to
+        % 750 MHz) or from a window of 8 bins (up to 350 MHz). The solver keeps the ideal |Ax| model. Restart cap as for jitter.
+        for a = {'IS', 'IC'}
+            for sp = [16 8]
+                for bw = [Inf 4 2 1 0.5 0.25]
+                    ov = {'arch',a{1},'toneSpan',sp}; if isfinite(bw), ov = [ov {'detBwGHz',bw}]; end %#ok<AGROW>
+                    J = add(J, study, sprintf('%s_span%d_bw%g', a{1}, sp, bw), [meas cap ov], sw);
+                end
+            end
+            for ti = [100 250 500 1000]
+                J = add(J, study, sprintf('%s_span16_box%gps', a{1}, ti), [meas cap {'arch',a{1},'detModel','boxcar','detIntPs',ti}], sw);
+            end
+        end
+    case 'smooth'
+        % (NOT queued, ask) calibration errors with structure, in the data only. (1) length errors smooth along the arch
+        % (calErrModel 'smooth') for IC, two-pass IC (ICS), RC and RS at 1 and 3 deg rms at the band centre, without correction and
+        % with per-port self-calibration (30 EM updates); (2) a smooth gain error (0.5 dB) with 3 deg smooth lengths, two-pass IC:
+        % no correction, lengths only, lengths and gains; (3) cable dispersion (quadratic in frequency) for IS and IC.
+        shapes = {'IC', {'arch','IC'}; 'ICS', {'arch','IC','icShiftFrac',1/2}; 'RC', {'arch','RC'}; 'RS', {'arch','RS'}};
+        for i = 1:size(shapes, 1)
+            for e = [1 3]
+                dr = [shapes{i, 2} {'calErrDeg',e,'calErrModel','smooth','nitEM',30}];
+                J = add(J, study, sprintf('%s_smooth%g_em30', shapes{i, 1}, e), [meas cap dr], sw);
+                J = add(J, study, sprintf('%s_smooth%g_sclen', shapes{i, 1}, e), [meas cap dr {'selfCal',true,'selfCalPriorDeg',e}], sw);
+            end
+        end
+        cg = {'arch','IC','icShiftFrac',1/2,'calErrDeg',3,'calErrModel','smooth','calGainDb',0.5,'calGainModel','smooth','nitEM',30};
+        J = add(J, study, 'ICS_sgain_em30', [meas cap cg], sw);
+        J = add(J, study, 'ICS_sgain_sclen', [meas cap cg {'selfCal',true,'selfCalPriorDeg',3}], sw);
+        J = add(J, study, 'ICS_sgain_scgain', [meas cap cg {'selfCal',true,'selfCalPriorDeg',3,'selfCalGain',true,'selfCalPriorGainDb',0.5}], sw);
+        for a = {'IS', 'IC'}, for dd = [2 5]
+            ov = {'arch',a{1},'calDispDeg',dd,'nitEM',30};
+            J = add(J, study, sprintf('%s_disp%g_em30', a{1}, dd), [meas cap ov], sw);
+            J = add(J, study, sprintf('%s_disp%g_sclen', a{1}, dd), [meas cap ov {'selfCal',true,'selfCalPriorDeg',dd}], sw);
         end, end
     case 'nosparse'
         % band-limit-only ablation (user, 2026-10-19; answers "how would an approach without compressive sensing

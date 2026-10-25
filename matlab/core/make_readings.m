@@ -123,15 +123,21 @@ if gauss, gs = RandStream('mt19937ar', 'Seed', seed + 7919); end   % separate st
 % (cable/switch loss), from its own stream so the length draws are unchanged.
 phDeg = 0; if isfield(c, 'calErrDeg'), phDeg = c.calErrDeg; end
 gDb = 0; if isfield(c, 'calGainDb'), gDb = c.calGainDb; end
-calErr = phDeg > 0 || gDb > 0;
+dispDeg = 0; if isfield(c, 'calDispDeg'), dispDeg = c.calDispDeg; end
+calErr = phDeg > 0 || gDb > 0 || dispDeg > 0;
 if calErr
     es = RandStream('mt19937ar', 'Seed', seed + 104729);
     mdl = 'length'; if isfield(c, 'calErrModel'), mdl = c.calErrModel; end
+    % ring position of every probe for the 'smooth' models (legs, if any, by index)
+    xpos = (1:nPool).' / nPool; if exist('pos0', 'var') && ~isempty(pos0), xpos(1:numel(pos0)) = (pos0(:) - 1) / nw; end
     lamC = 299792458 / mean(f) * 100;                                         % band-centre wavelength (cm)
     switch mdl
         case 'length'
             dL = (phDeg/360) * lamC * randn(es, nPool*npol, 1);               % cm, one per port
             E = exp(1i*2*pi*dL ./ lam);                                       % true / assumed, port x tone
+        case 'smooth'
+            dL = repmat((phDeg/360) * lamC * smooth_shape(es, xpos), npol, 1);   % cm, smooth along the arch, same for both polarizations
+            E = exp(1i*2*pi*dL ./ lam);
         case 'drift'
             Lp = L(:); a = sign(randn(es)) * (phDeg/360) * lamC / rms(Lp);    % fractional length change
             dL = a * Lp;
@@ -144,8 +150,17 @@ if calErr
     gTrue = zeros(nPool*npol, 1);
     if gDb > 0
         gsr = RandStream('mt19937ar', 'Seed', seed + 104743);
-        gTrue = (gDb/20) * log(10) * randn(gsr, nPool*npol, 1);              % natural-log amplitude per port
+        if isfield(c, 'calGainModel') && strcmp(c.calGainModel, 'smooth')
+            gTrue = (gDb/20) * log(10) * repmat(smooth_shape(gsr, xpos), npol, 1);   % smooth along the arch
+        else
+            gTrue = (gDb/20) * log(10) * randn(gsr, nPool*npol, 1);          % natural-log amplitude per port
+        end
         E = E .* exp(gTrue);
+    end
+    if dispDeg > 0                                         % cable dispersion: phase quadratic in frequency, per port
+        dsr = RandStream('mt19937ar', 'Seed', seed + 15485867);
+        beta = randn(dsr, nPool*npol, 1); x2 = ((f - mean(f)) / max((max(f) - min(f))/2, eps)).^2;   % 1 at the band edges
+        E = E .* exp(1i * (dispDeg*pi/180) * beta .* x2);
     end
 end
 % timing jitter: the detector samples at t + dt (dt ~ N(0, jitterPs^2), independent per sample) while the
@@ -219,9 +234,16 @@ S.f = f; S.lam = lam; S.df = df; S.L = L;
 % entries of the solver's matrix with their port and tone (cpr_selfcal re-phases them per port)
 vA = V(1:ptr); if mism, vA = VA(1:ptr); end
 S.ent = struct('i', I(1:ptr), 'j', J(1:ptr), 'v', vA, 'port', EP(1:ptr), 'tone', ET(1:ptr), ...
-    'nPorts', nPool*npol, 'm', mTot, 'n', n);
-S.dLtrue = []; if calErr && any(strcmp(mdl, {'length', 'drift'})), S.dLtrue = dL; end   % true length errors (cm), for scoring
+    'nPorts', nPool*npol, 'm', mTot, 'n', n, 'vTrue', V(1:ptr));   % vTrue: data values (cpr_detector)
+S.dLtrue = []; if calErr && any(strcmp(mdl, {'length', 'drift', 'smooth'})), S.dLtrue = dL; end   % true length errors (cm), for scoring
 S.gTrue = []; if calErr, S.gTrue = gTrue; end            % true log-amplitude errors per port (0 if no gain error)
+end
+
+function g = smooth_shape(rs, xpos)
+% zero-mean, unit-rms function of the ring position xpos in [0, 1): random combination of the first three harmonics
+g = zeros(size(xpos));
+for h = 1:3, g = g + randn(rs) * cos(2*pi*h*xpos + 2*pi*rand(rs)); end
+g = g - mean(g); g = g / max(sqrt(mean(g.^2)), eps);
 end
 
 function a = ring_leg_ang(r, idx, arch, pos0, ntx, legRow, legOff, perRot, nw, nh, sh)
