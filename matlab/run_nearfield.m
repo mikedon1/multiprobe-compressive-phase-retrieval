@@ -1,5 +1,5 @@
 function run_nearfield()
-%RUN_NEARFIELD  Section VII: two-scan technique on two spheres (15 and 30 cm) vs. compressive phase
+%RUN_NEARFIELD  Section VIII: two-scan technique on two spheres (15 and 30 cm) vs. compressive phase
 %retrieval on the 15 cm sphere (IC and IS, both polarizations), then the figures.
 %Settings: cpr_settings.m (pattern grid, frequencies, SNR, maximum two-scan starts, trials).
 cpr_setup();

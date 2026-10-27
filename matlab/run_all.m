@@ -26,7 +26,8 @@ studies = { ...
     'pr_icbad', ...                                       % Fig. 3: IC with the Fourier basis, phase per cut
     'pr_gauss', 'pr_nosparse', 'pr_combiner', ...         % Section VI-A/B text: Gaussian weights, no sparsity, combiner
     'pr_jitter', 'pr_tonespan', 'pr_trunc', 'pr_aut2', ...% Section VI-C and supplement tables
-    'pr_cables', 'pr_scprior', 'pr_repeat', 'pr_caldrift', 'pr_calgain', 'pr_iters', 'pr_pairs'};   % supplement
+    'pr_cables', 'pr_scprior', 'pr_repeat', 'pr_caldrift', 'pr_calgain', 'pr_iters', 'pr_pairs', ...   % supplement
+    'pr_detbw', 'pr_smooth'};                              % supplement: detector response, structured (smooth, dispersive) calibration errors
 for s = studies, run_study(s{1}); end
 
 % ---- Figures (figures/); written to <results>/figs/paper when S.figures.print is true ----
@@ -42,7 +43,7 @@ cpr_ic_bad_vsh();                     % IC_bad (Fig. 3)
 if ~ismember('nearfield', skip), run_nearfield(); end
 
 % ---- Section VII: full-wave example with embedded-probe calibration (fullwave/) ----
-% ten trials of the emulated full ring, the perturbed-calibration runs, cutphi (Fig. 9) and cuttheta (supplement)
+% true ring (65-port HFSS model): ten trials, m/n 0.6, perturbed calibration; moment-method ring; cut figures (cutphi, cuttheta); summary
 if ~ismember('fullwave', skip),  run_fullwave();  end
 
 % ---- Conjugate-ambiguity checks (Section IV-C numbers; studies/) ----

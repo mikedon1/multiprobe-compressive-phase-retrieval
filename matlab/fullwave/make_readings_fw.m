@@ -4,7 +4,7 @@ function S = make_readings_fw(c, D, seed, legMode)
 %   S = make_readings_fw(c, D, seed, legMode)
 %     c       cpr_cfg(...) -- uses meas, P, K, ratio, nlegs (<= D.nlegsAvail),
 %             cableMaxCm
-%     D       fw_data(...)
+%     D       struct with the fields listed below (fwc_run_trials)
 %     legMode 'real'  : data use each leg's OWN response (real ports / exact
 %                       position); the recovery model maps leg k at rotation L
 %                       to the anchor at rotation L + D.legShift*k. Any leg

@@ -23,7 +23,7 @@ p.addParameter('Ring', 'full');       % 'true' (2026-10-22): the TRUE full ring 
                                       %   ring at psi, so the 32 computed rotations form a 64-port ring at 16 rotations
                                       %   (coupling between the two halves is not in the single-arch HFSS model);
                                       %   'arc': the one-sided arch at 32 rotations (fails for the dipole AUT, see
-                                      %   results_vsh/drivers/diag_geo.m and the supplement's sampling-geometry table)
+                                      %   matlab/diagnostics/diag_geo.m and the supplement's sampling-geometry table)
 p.addParameter('RingData', []);       % 'true' ring: struct with Xring, psi (rad) [, Rring] instead of the HFSS files (mom_make_ring)
 p.addParameter('RingCal', 'arch');    % 'true' ring calibration: 'arch' (arch response + 180-deg symmetry) | 'ring' (RingData.Rring, ring alone)
 p.addParameter('Polish', false);      % true (2026-10-23): refine each PR-GAMP estimate with fwc_polish (held-out stopping), default off

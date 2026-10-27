@@ -51,32 +51,25 @@ S.ratioCircular = 0.3;     % sampling ratio m/n of the circular architectures (p
 S.trials.sweep      = 1;   % points of the Section V sweeps and the supplementary sweeps
 S.trials.snrCircular = 1;  % IC and RC points of the SNR sweep (1 like every sweep, user 2026-10-19; was 3)
 S.trials.nearfield  = 1;   % Section VII compressive phase retrieval runs
-S.trials.fullwave   = 10;  % Section VI full-wave trials
+S.trials.fullwave   = 10;  % Section VII full-wave trials (one trial: 0.5 to 3 h)
+S.fullwaveExtras    = true; % Section VII: also m/n 0.6, half-ring calibration, perturbed calibration, MoM arch calibration (false: main trials only)
 
 % 4. SWEEP GRIDS (the x-axis values of each figure)
 S.sweeps.ratio  = [0.05 0.08 0.12 0.2 0.3 0.4 0.6 0.8 1.0];  % sampling ratio m/n (n = 32 x 16 x 16 x 2)
-S.sweeps.Pcs    = [1 2 4 8 16 32];      % active probes, complex measurements
 S.sweeps.Ppr    = [1 2 4 8 16];         % active probes, phaseless measurements
 S.sweeps.K      = [1 2 4 8 16];         % tones per reading
 S.sweeps.rnRS   = [1/16 1/8 1/4 1/2 1];  % installed-probe fraction, RS (n_phi = 16: 1, 2, 4, 8, 16 probes per row;
                                          %   1/32 would round to the same single probe as 1/16)
 S.sweeps.rnRC   = [1/16 1/8 1/4 1/2 1];     % installed-probe fraction, RC
-S.sweeps.ndCs   = [1 2 4 8 16 32];      % wavelengths, complex (joint vs one at a time)
 S.sweeps.ndPr   = [1 2 4 8 16];         % wavelengths, phaseless
 S.sweeps.snr    = [10 20 30 40 50 60 80];    % SNR in dB
-S.sweeps.legs   = [0 1 2 4 8 16];       % leg probes (IC, RC)
-S.sweeps.size   = [16 32 64 128];       % angular resolution nw
-S.sweeps.L      = [8 10 12 14 16];      % truncation degree of the 'vsh' basis (replaces the size sweep)
-S.sweeps.examples = struct('cs', [0.03 0.05 0.08 0.2], 'pr', [0.1 0.15 0.2 0.3 0.4]);   % pattern-cut examples
+S.sweeps.examples = struct('pr', [0.1 0.15 0.2 0.3 0.4]);   % pattern-cut examples
 S.sweeps.gaussRatio = [0.08 0.1 0.15 0.2 0.3];   % sampling ratios of the switches-vs-Gaussian-weights comparison (IS)
 S.sweeps.calErr = struct('IS', [1 2 5 10 20], 'IC', [1 2 5 10 20]);   % same grid for both (user 2026-10-19)   % rms cable phase errors in degrees
 
-% 5. FULL-WAVE EXAMPLE (Section VI) AND NEAR-FIELD COMPARISON (Section VII)
+% 5. FULL-WAVE EXAMPLE (Section VII, trials above) AND NEAR-FIELD COMPARISON (Section VIII)
 S.nearfield.snr         = 50;     % dB
 S.nearfield.twoScanStarts = 400;  % maximum random starts of the two-scan technique per frequency
-S.fullwave.nd           = 16;     % frequencies of the HFSS sweep to use (2.375-3.125 GHz in 50 MHz steps)
-S.fullwave.nitGAMP      = 200;    % GAMP iterations per EM update in Section VI (the Section VI runs used 200;
-                                  %   the circular value S.nitGAMP(2) applies to Sections V and VII)
 
 % 6. PATHS AND COMPUTE
 S.gampPath   = '';    % folder with GAMPmatlab (see cpr_setup.m); empty: $GAMPMATLAB or external/GAMPmatlab
@@ -93,21 +86,18 @@ S.figures.axes  = 'paper'; % 'paper': the axis limits and ticks used in the pape
 if strcmp(active, 'quick')                          % ---- QUICK PRESET (overrides) ----
     S.nw = 32;  S.nd = 8;
     S.restarts = [3 5];  S.nitEM = [6 6];  S.nitGAMP = [200 300];  S.ratioCircular = 0.8;
-    S.trials.snrCircular = 1;  S.trials.fullwave = 2;
+    S.trials.snrCircular = 1;  S.trials.fullwave = 1;  S.fullwaveExtras = false;
     S.sweeps.ratio = [0.1 0.3 0.6];
-    S.sweeps.Pcs = [2 4];    S.sweeps.Ppr = [2 4];
+    S.sweeps.Ppr = [2 4];
     S.sweeps.K = [1 4];
     S.sweeps.rnRS = [1/8 1/2];   S.sweeps.rnRC = [1/4 1];
-    S.sweeps.ndCs = [1 2 4 8];   S.sweeps.ndPr = [1 2 4 8];
+    S.sweeps.ndPr = [1 2 4 8];
     S.sweeps.snr = [20 50 80];
-    S.sweeps.legs = [0 4 8];
-    S.sweeps.size = [16 32];   S.sweeps.L = [10 12];
-    S.sweeps.examples = struct('cs', 0.2, 'pr', 0.3);   % one example per figure
+    S.sweeps.examples = struct('pr', 0.3);   % one example per figure
     S.sweeps.gaussRatio = [0.2 0.3];
     S.sweeps.calErr = struct('IS', [2 10], 'IC', 5);
     S.figures.axes = 'auto';
     S.nearfield.twoScanStarts = 10;
-    S.fullwave.nd = 8;  S.fullwave.nitGAMP = 200;
 elseif ~strcmp(active, 'paper')
     error('cpr_settings: unknown preset "%s" (use ''paper'' or ''quick'')', active);
 end

@@ -1,7 +1,6 @@
 function cpr_ic_bad_vsh(blocks)
 %CPR_IC_BAD_VSH  Paper Fig. 3(c) from the saved pr_icbad run (2026-10-19): IC with the 2D Fourier basis and no
-%leg probes at the paper's settings (32 x 16, both components, m/n 0.3). Same figure as cpr_ic_bad.m (which runs
-%its own recovery with the current defaults, now the spherical-wave basis), but read from the study results
+%leg probes at the paper's settings (32 x 16, both components, m/n 0.3). Read from the study results
 %(<results>/pr_icbad_w*.mat, Xh saved). First wavelength, component along the scan circle, the cuts in phi
 %given by blocks (default 1:4), vectorized with vertical lines between them, phase unwrapped, one global phase
 %removed. Writes <results>/figs/paper/IC_bad.pdf.

@@ -22,7 +22,7 @@ u = accumarray([e.i, e.tone], real(v), [S.m, nd]) + 1i * accumarray([e.i, e.tone
 D = f - f.';                                                                % D(k, k') = f_k - f_k'
 switch mdl
     case 'lowpass', H = 1 ./ (1 + 1i * D / (bw * 1e9));
-    case 'boxcar',  H = sinc(D * ti * 1e-12);                               % sinc(x) = sin(pi x)/(pi x)
+    case 'boxcar',  x = pi * D * ti * 1e-12; H = ones(size(x)); k = x ~= 0; H(k) = sin(x(k)) ./ x(k);   % sinc(D T), base MATLAB (0/0 = 1)
     otherwise, error('cpr_detector: unknown detModel %s', mdl);
 end
 q = real(sum((u * H) .* conj(u), 2));                                       % u H u^H per row

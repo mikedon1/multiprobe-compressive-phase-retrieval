@@ -1,47 +1,14 @@
 function cpr_paper_figs(part)
-%CPR_PAPER_FIGS  Paper figures (cpr_fig.m: Times New Roman, LineWidth 1.5, no markers). Writes
-%<results>/figs/paper/<name>.pdf/.png. Multi-panel figures are separate PDFs placed side by side in
-%LaTeX.
-%   cpr_paper_figs('supplement')  supplementary complex measurements:  cs2_A (24 x 6 cm), cs2_sparsity, cs2_ratio,
-%                         cs2_P, cs2_K, cs2_rn, cs2_nd, cs2_snr, cs2_size, cs2_exmag, cs2_exphase
-%   cpr_paper_figs('IV')   Section V (phaseless): pr2_ratio, pr2_P, pr2_K, pr2_rn, pr2_nd,
-%                         pr2_legs, pr2_snr, pr2_size (each drawn only if its study has data)
-if nargin < 1, part = 'supplement'; end
+%CPR_PAPER_FIGS  Section VI figures (cpr_fig.m: Times New Roman, LineWidth 1.5, no markers). Writes
+%<results>/figs/paper/<name>.pdf/.png. Multi-panel figures are separate PDFs placed side by side in LaTeX.
+%   cpr_paper_figs('IV')  pr2_ratio, pr2_P, pr2_K, pr2_rn, pr2_nd, pr2_snr, pr2_calerr (paper files pr3_*.pdf)
+%   cpr_paper_figs('v9')  pr3_basiscmp (Fig. 6), pr3_calerr (Fig. 5(c)); each drawn only if its study has data
+if nargin < 1, part = 'IV'; end
 pDir = fullfile(cpr_paths().results, 'figs', 'paper');
 if ~exist(pDir, 'dir'), mkdir(pDir); end
 F = cpr_fig();
 P = @(name) fullfile(pDir, name);
 switch part
-    case 'supplement'
-        matrices(F, P('cs2_A'));
-        sparsity(F, P('cs2_sparsity'));
-        archs(F, cpr_load('cs_ratio'), 'ratio', 'raw', P('cs2_ratio'), 'sampling ratio {\itm/n}', 'northeast', true, []);
-        % Fig. 6 panels: 3 per row at 0.32\textwidth (5.8 cm), drawn at
-        % 7.8 x 5 cm so the 11 pt text prints at the same size as the 12 cm figures at 0.49\textwidth.
-        Fs = F; Fs.new = @() F.new(7.8, 5); Fs.save = @(f, file) F.save(f, file, 7.8, 5);
-        single(Fs, cpr_load('cs_P'), 'P', 'raw', P('cs2_P'), 'active probes {\itP}', [1 2 4 8 16 32], [-50 -10]);
-        tones(Fs, cpr_load('cs_K'), 'raw', P('cs2_K'));
-        rn(Fs, cpr_load('cs_rn'), 'raw', P('cs2_rn'), [-50 0]);
-        nd(Fs, cpr_load('cs_nd'), P('cs2_nd'), [-40 -10]);
-        archs(Fs, cpr_load('cs_snr'), 'snrdB', 'raw', P('cs2_snr'), 'SNR (dB)', 'northeast', false, [-40 -10]);
-        single(Fs, cpr_load('cs_size'), 'nw', 'raw', P('cs2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], [-50 0]);
-        examples(F, 'cs_examples', P('cs2_exmag'), P('cs2_exphase'));
-    case 'supplementsweeps'                              % only the condensed Fig. 6 panels (same as in 'supplement')
-        Fs = F; Fs.new = @() F.new(7.8, 5); Fs.save = @(f, file) F.save(f, file, 7.8, 5);
-        single(Fs, cpr_load('cs_P'), 'P', 'raw', P('cs2_P'), 'active probes {\itP}', [1 2 4 8 16 32], [-50 -10]);
-        tones(Fs, cpr_load('cs_K'), 'raw', P('cs2_K'));
-        rn(Fs, cpr_load('cs_rn'), 'raw', P('cs2_rn'), [-50 0]);
-        nd(Fs, cpr_load('cs_nd'), P('cs2_nd'), [-40 -10]);
-        archs(Fs, cpr_load('cs_snr'), 'snrdB', 'raw', P('cs2_snr'), 'SNR (dB)', 'northeast', false, [-40 -10]);
-        single(Fs, cpr_load('cs_size'), 'nw', 'raw', P('cs2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], [-50 0]);
-    case 'fig6'                                    % only the NMSE-example figure (Fig. 6)
-        examples(F, 'cs_examples', P('cs2_exmag'), P('cs2_exphase'));
-    case 'IVnd'                                    % only the phaseless n_lambda panel
-        F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
-        nd(F3, cpr_load('pr_nd'), P('pr2_nd'), [-46 -20]);
-    case 'IVP'                                     % only the phaseless P panel
-        F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
-        single(F3, cpr_load('pr_P'), 'P', 'metric', P('pr2_P'), 'active ports {\itP}', [1 2 4 8 16], []);
     case 'IV'
         % Section V panels: shorter (12 x 4.5 cm) for compact 2 x 2 figures; 11 pt text
         Fs = F; Fs.new = @() F.new(12, 4.5); Fs.save = @(f, file) F.save(f, file, 12, 4.5);
@@ -54,22 +21,15 @@ switch part
         T = tryload('pr_K');     if ~isempty(T), tones(F3, T, 'metric', P('pr2_K')); end
         T = tryload('pr_rn');    if ~isempty(T), rn(Fs, T, 'metric', P('pr2_rn'), []); end
         T = tryload('pr_nd');    if ~isempty(T), nd(F3, T, P('pr2_nd'), [-46 -20]); end
-        T = tryload('pr_legs');  if ~isempty(T), archs(F3, T, 'nlegs', 'metric', P('pr2_legs'), 'number of leg probes', 'northeast', false, []); end
         T = tryload('pr_snr');   T2 = tryload('pr_snrseeds'); if ~isempty(T) && ~isempty(T2), T = [T; T2]; end   % IC/RC seeds 2-3 (mean of 3)
         if ~isempty(T), archs(F3, T, 'snrdB', 'metric', P('pr2_snr'), 'SNR (dB)', 'northeast', false, []); end
         T = tryload('pr_calerr'); if ~isempty(T), calerr(F3, T, P('pr2_calerr')); end
-        T = tryload('pr_size');  if ~isempty(T), single(F3, T, 'nw', 'metric', P('pr2_size'), '{\itn}_\theta  ({\itn}_\phi = {\itn}_\theta/2)', [16 32 64 128], []); end
     case 'v9'
         % round 7 (2026-10-20): Fig. 7 (basis comparison, pr_basiscmp32) and Fig. 6(c) with self-calibration
         % (pr_calerr30 = the 30-update control without it, pr_calerrsc, pr_calerrics, pr_calerrrc), 7.8 x 5 cm like
-        % the other Fig. 6 panels. Reads the current results folder (CPR_RESULTS); pr_basiscmp32 may live in another
-        % folder: cpr_paper_figs('v9') looks for it in the current folder first, then in a sibling results_v8.
+        % the other Fig. 5 panels. Reads the current results folder (CPR_RESULTS).
         F3 = F; F3.new = @() F.new(7.8, 5); F3.save = @(f, file) F.save(f, file, 7.8, 5);
         T = tryload('pr_basiscmp32');
-        if isempty(T)
-            alt = fullfile(fileparts(cpr_paths().results), 'results_v8');
-            if exist(alt, 'dir'), T = load_from(alt, 'pr_basiscmp32'); end
-        end
         if ~isempty(T), basiscmp(F, T, P('pr3_basiscmp')); end   % full-column 12 x 6 cm, like Fig. 10 (2026-10-21)
         Tsc = [tryload('pr_calerr30'); tryload('pr_calerrsc'); tryload('pr_calerrics'); tryload('pr_calerrrc')];
         if ~isempty(Tsc), calerrsc(F3, Tsc, P('pr3_calerr')); end
@@ -232,112 +192,6 @@ F.style(ax);
 yl = ylim(ax); ylim(ax, [yl(1) - 15, yl(2)]); ax.YTick = ceil(yl(1)/10)*10 : 10 : floor(yl(2)/10)*10;
 legend(ax, h, nm, 'Location', 'south', 'NumColumns', 2); F.save(f, file);
 end
-
-function T = load_from(dirName, study)
-% cpr_load from another results folder
-old = getenv('CPR_RESULTS'); setenv('CPR_RESULTS', dirName);
-try, T = cpr_load(study); catch, T = []; end
-setenv('CPR_RESULTS', old);
-end
-
-function matrices(F, file)
-D = crlh_data();
-fq = D.freq(1:2).';
-f = F.new(24, 6); tl = tiledlayout(f, 1, 4, 'TileSpacing', 'compact', 'Padding', 'compact');
-a4 = {'IS', 'RS', 'IC', 'RC'}; ttl = {'(a) IS', '(b) RS', '(c) IC', '(d) RC'};
-for i = 1:4
-    c = cpr_cfg('meas', 'complex', 'arch', a4{i}, 'nw', 8, 'nd', 2, 'K', 2, 'P', 2, 'ratio', 0.25, ...
-        'nlegs', 0, 'rnRS', 1/2, 'rnRC', 1/2);
-    S = make_readings(c, fq, 3); n2 = c.nw*c.nh;
-    ax = nexttile(tl); imagesc(ax, ~full(S.Phi ~= 0)); colormap(ax, gray); axis(ax, 'normal'); hold(ax, 'on');
-    plot(ax, [n2 n2] + 0.5, [0.5 S.m + 0.5], 'r-', 'LineWidth', 1);
-    for q = 1:c.nh - 1
-        plot(ax, [q q]*c.nw + 0.5, [0.5 S.m + 0.5], ':', 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
-        plot(ax, ([q q] + c.nh)*c.nw + 0.5, [0.5 S.m + 0.5], ':', 'Color', [0.6 0.6 0.6], 'LineWidth', 0.5);
-    end
-    for r = 2:2:S.m - 1, plot(ax, [0.5 2*n2 + 0.5], [r r] + 0.5, '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 0.25); end
-    set(ax, 'XTick', [1 n2 + 1], 'XTickLabel', {'\lambda_1', '\lambda_2'}, 'YTick', [], 'FontName', F.font);
-    title(ax, ttl{i}, 'FontWeight', 'normal', 'FontName', F.font);
-    if i == 1, ylabel(ax, 'measurements'); end
-end
-xlabel(tl, 'pattern samples', 'FontName', F.font);
-F.save(f, file, 24, 6);
-end
-
-function sparsity(F, file)
-c = cpr_cfg(); [X, fr] = pattern_crlh(c.nw, c.nd, c.f0idx);
-[nw, nh, nd_] = size(X); n2 = nw*nh; Xm = reshape(X, n2, nd_);
-S2 = reshape(fft2(reshape(Xm, nw, nh, [])), n2, []) / sqrt(n2);
-rng(1); rp = exp(2i*pi*rand(1, nd_));
-dct = cpr_basis('dct', fr, 0);
-tau = -angle(sum(sum(conj(S2(:, 1:end-1)) .* S2(:, 2:end)))) / (2*pi*(fr(2) - fr(1)));
-Mt = cpr_basis('dct', fr, tau);
-cv = {S2, fft(S2, [], 2)/sqrt(nd_), fft(S2 .* rp, [], 2)/sqrt(nd_), (dct' * S2.').', (Mt' * S2.').'};
-nm = {'each wavelength alone', '3D DFT', '3D DFT, random phase', '2D DFT \times DCT', '2D DFT \times DCT, delay comp.'};
-f = F.new(); ax = axes(f); hold(ax, 'on');
-for k = 1:5
-    e = sort(abs(cv{k}(:)).^2, 'descend'); ce = cumsum(e)/sum(e);
-    plot(ax, 1:numel(ce), 1 - ce, F.lss{k}, 'Color', F.cols(k, :), 'LineWidth', F.lw);
-end
-set(ax, 'XScale', 'log', 'YScale', 'log', 'YTick', 10.^(-5:0), 'XTick', 10.^(0:4)); ylim(ax, [1e-5 1]); xlim(ax, [1 1e4]);
-xlabel(ax, 'largest coefficients kept'); ylabel(ax, 'energy not captured');
-legend(ax, nm, 'Location', 'southwest', 'FontSize', 7); F.style(ax); F.save(f, file);
-end
-
-function examples(F, study, fileMag, filePh)
-% Pattern examples at two NMSE levels: two panels, each with the pattern on the left y axis and
-% its error on the right y axis. Axis limits are chosen so the pattern sits at the top and the
-% error at the bottom, close but not overlapping. Truth solid; the two examples dashed and dotted.
-outDir = cpr_paths().results;
-E = {};
-for d = dir(fullfile(outDir, [study '_w*.mat'])).'
-    S = load(fullfile(d.folder, d.name));
-    for e = S.res(:).', if ~isempty(e.Xh), E{end+1} = e; end, end %#ok<AGROW>
-end
-nm = cellfun(@(e) e.raw, E);
-[~, i1] = min(abs(nm + 20)); [~, i2] = min(abs(nm + 34)); E = E([i1 i2]);   % the -20 and -34 dB examples
-c = E{1}.cfg; [X, ~] = pattern_crlh(c.nw, c.nd, c.f0idx); k = ceil(c.nd/2);
-A = X(:, :, k); [~, ip] = max(abs(A(:))); [~, jp] = ind2sub(size(A), ip);
-th = (0:c.nw-1)*360/c.nw; a = A(:, jp); pk = max(abs(a));
-blue = F.col.IS; red = [0.8 0 0]; ls = {'--', ':'}; mn = char(8722);
-leg = {'Truth', sprintf('%s%.0f dB', mn, -E{1}.raw), sprintf('%s%.0f dB', mn, -E{2}.raw), ...
-       sprintf('error, %s%.0f dB', mn, -E{1}.raw), sprintf('error, %s%.0f dB', mn, -E{2}.raw)};
-B = cellfun(@(e) double(e.Xh(:, jp, k)), E, 'UniformOutput', false);
-% ---- magnitude
-db = @(v) 20*log10(max(abs(v), 1e-6)/pk);
-L = [db(a), db(B{1}), db(B{2})];
-Er = [db(abs(B{1}) - abs(a)), db(abs(B{2}) - abs(a))];          % magnitude error level re the peak
-Er = max(Er, -80);
-twoaxis(F, th, L, Er, blue, red, ls, leg, 'magnitude (dB)', 'magnitude error (dB)', fileMag);
-% ---- phase (truth unwrapped along the cut; recovered = truth + phase error)
-pT = unwrap(angle(a))*180/pi;
-pe = [angle(B{1} .* conj(a)), angle(B{2} .* conj(a))]*180/pi;
-L = [pT, pT + pe(:, 1), pT + pe(:, 2)];
-twoaxis(F, th, L, pe, blue, red, ls, leg, 'phase (deg)', 'phase error (deg)', filePh);
-end
-
-function twoaxis(F, th, L, Er, blue, red, ls, leg, ylL, ylR, file)
-f = F.new(); ax = axes(f); hold(ax, 'on'); h = gobjects(1, 5);
-yyaxis(ax, 'left');
-h(1) = plot(ax, th, L(:, 1), '-', 'Color', 'k', 'LineWidth', F.lw);
-h(2) = plot(ax, th, L(:, 2), ls{1}, 'Color', blue, 'LineWidth', F.lw);
-h(3) = plot(ax, th, L(:, 3), ls{2}, 'Color', blue, 'LineWidth', F.lw);
-lo = min(L(:)); hi = max(L(:)); H = (hi - lo)/0.42;               % pattern in 55-97% of the height
-ylim(ax, [hi + 0.03*H - H, hi + 0.03*H]); ylabel(ax, ylL); ax.YAxis(1).Color = blue;
-yyaxis(ax, 'right');
-h(4) = plot(ax, th, Er(:, 1), ls{1}, 'Color', red, 'LineWidth', F.lw);
-h(5) = plot(ax, th, Er(:, 2), ls{2}, 'Color', red, 'LineWidth', F.lw);
-lo = min(Er(:)); hi = max(Er(:)); H = (hi - lo)/0.27;             % error in 3-30% of the height
-ylim(ax, [lo - 0.03*H, lo - 0.03*H + H]); ylabel(ax, ylR); ax.YAxis(2).Color = red;
-xlim(ax, [0 360]); xlabel(ax, '\theta (deg)');
-F.style(ax);
-% legend in the gap between the two bands (explicit position; 'best' is unreliable here)
-lg = legend(ax, h, leg, 'NumColumns', 3, 'FontSize', 7); drawnow;
-lp = lg.Position; axp = ax.Position;
-lg.Position = [axp(1) + (axp(3) - lp(3))/2, axp(2) + 0.425*axp(4) - lp(4)/2, lp(3), lp(4)];
-F.save(f, file);
-end
-
 
 function T = tryload(study)
 % studies that have not produced results yet are skipped

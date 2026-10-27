@@ -1,7 +1,7 @@
 function info = cpr_cuts_vsh(cutdir, ratios, k)
 %CPR_CUTS_VSH  Truth vs. recovered pattern cut through the pattern peak, with the pointwise error, for the
 %phaseless IS examples of pr_examples with the spherical-wave basis and both polarizations (paper Fig. 5,
-%supplementary azimuth cut). Dual-polarized version of cpr_cuts.m (2026-10-19).
+%supplementary azimuth cut). Dual-polarized.
 %   cpr_cuts_vsh()                 elevation cut, examples at m/n = 0.10 and 0.30, first frequency
 %   cpr_cuts_vsh('phi')            azimuth cut through the peak
 % The truth is the exact pattern (pattern_crlh_vsh). The plotted component is the one that holds the peak

@@ -2,41 +2,34 @@ function J = cpr_jobs(study)
 %CPR_JOBS  Job list of a study. Each job = cpr_cfg overrides + a random seed.
 %   J = cpr_jobs('pr_ratio')
 % Every job uses cpr_cfg() for everything it does not override, and the sweep grids and trial
-% counts come from cpr_settings.m. Studies are named <meas>_<kind> with meas = cs (complex
-% measurements, supplementary material) or pr (phaseless measurements, main paper):
-%   <meas>_ratio     sampling ratio m/n, all four architectures
-%   <meas>_P         active probes P (IS)
-%   <meas>_K         tones per reading K (IS)
-%   <meas>_rn        installed-probe fraction r_n (RS and RC)
-%   <meas>_nd        number of wavelengths, recovered jointly or each alone (IS)
-%   <meas>_snr       SNR, all four architectures (IC and RC use settings.trials.snrCircular trials)
-%   <meas>_legs      leg probes (IC and RC)
-%   <meas>_size      angular resolution nw (IS)
-%   <meas>_L         truncation degree of the VSH basis (IS)
-%   pr_legsdft       IC and RC with the earlier 2D DFT basis, without and with 8 leg probes
-%   <meas>_examples  IS runs that keep the recovered pattern (pattern-cut figures)
+% counts come from cpr_settings.m. Studies are named pr_<kind> (phaseless measurements):
+%   pr_ratio     sampling ratio m/n, all four architectures
+%   pr_P         active probes P (IS)
+%   pr_K         tones per reading K (IS)
+%   pr_rn        installed-probe fraction r_n (RS and RC)
+%   pr_nd        number of wavelengths, recovered jointly or each alone (IS)
+%   pr_snr       SNR, all four architectures (IC and RC use settings.trials.snrCircular trials)
+%   pr_examples  IS runs that keep the recovered pattern (pattern-cut figures)
 %   pr_gauss         on/off switches vs complex Gaussian weights on the same probes (IS at several
 %                    sampling ratios, IC at its base ratio): Section V-A
 %   pr_calerr        sensitivity to rms cable phase errors in the data (IS and IC): Section V-C
 %   pr_calerrsc      pr_calerr with self-calibration (30 EM updates); pr_calerr30 = its control without
 %   pr_jitter        detector timing jitter (IS and IC); pr_nosparse  band-limit-only ablation (no sparsity prior)
-%   pr_detbw         (NOT queued, 2026-10-25) finite detector bandwidth / integration time in the data (IS, IC; tones from the
+%   pr_detbw         finite detector bandwidth / integration time in the data (IS, IC; tones from the
 %                    whole band or an 8-bin window)
-%   pr_smooth        (NOT queued, 2026-10-25) structured calibration errors: lengths and gains smooth along the arch, cable dispersion
+%   pr_smooth        structured calibration errors: lengths and gains smooth along the arch, cable dispersion
 %   smoke            two tiny jobs, to check that the code runs
 S = cpr_settings();
 J = struct('study', {}, 'label', {}, 'over', {}, 'seed', {}, 'cost', {}, 'saveXh', {});
 sw = 1:S.trials.sweep;
 archs = {'IS', 'RS', 'IC', 'RC'};
 if strcmp(study, 'smoke')
-    J = add(J, study, 'cs', {'meas','complex','nw',16,'nd',2,'K',2,'ratio',0.3}, 1);
     J = add(J, study, 'pr', {'meas','phaseless','nw',16,'nd',2,'K',2,'ratio',0.6,'minTry',1,'maxTry',1}, 1);
     return
 end
-tok = regexp(study, '^(cs|pr)_(\w+)$', 'tokens', 'once');
+tok = regexp(study, '^(pr)_(\w+)$', 'tokens', 'once');
 if isempty(tok), error('cpr_jobs: unknown study %s', study); end
-isCs = strcmp(tok{1}, 'cs');
-meas = {'meas', ifelse(isCs, 'complex', 'phaseless')};
+meas = {'meas', 'phaseless'};
 % restart cap for studies whose runs cannot reach the residual target (cable errors, timing jitter, no sparsity
 % prior): every restart would run to the end, so they use 3 instead of 10 (user, 2026-10-19)
 cap = {'maxTry', 3};
@@ -46,7 +39,7 @@ switch tok{2}
             J = add(J, study, sprintf('%s_r%.2f', a{1}, rt), [meas {'arch',a{1},'ratio',rt}], sw);
         end, end
     case 'P'
-        Pl = S.sweeps.Ppr; if isCs, Pl = S.sweeps.Pcs; end
+        Pl = S.sweeps.Ppr;
         for P = Pl, J = add(J, study, sprintf('P%d', P), [meas {'P',P}], sw); end
     case 'K'
         for K = S.sweeps.K, J = add(J, study, sprintf('K%d', K), [meas {'K',K}], sw); end
@@ -55,7 +48,7 @@ switch tok{2}
         for rn = S.sweeps.rnRC, J = add(J, study, sprintf('RC_rn%.4f', rn), [meas {'arch','RC','rnRC',rn}], sw); end
     case 'nd'
         % joint: the first nd wavelengths together; alone: each of them by itself (nd = 1, f0idx = j)
-        ndl = S.sweeps.ndPr; if isCs, ndl = S.sweeps.ndCs; end
+        ndl = S.sweeps.ndPr;
         for nd = ndl
             J = add(J, study, sprintf('joint_nd%d', nd), [meas {'nd',nd,'K',min(4,max(1,nd/2))}], sw);   % K < nd: K = nd is the worst case
         end
@@ -64,12 +57,8 @@ switch tok{2}
         end
     case 'snr'
         for a = archs, for sn = S.sweeps.snr
-            seeds = sw; if ~isCs && any(strcmp(a{1}, {'IC', 'RC'})), seeds = 1:S.trials.snrCircular; end
+            seeds = sw; if any(strcmp(a{1}, {'IC', 'RC'})), seeds = 1:S.trials.snrCircular; end
             J = add(J, study, sprintf('%s_snr%d', a{1}, sn), [meas {'arch',a{1},'snrdB',sn}], seeds);
-        end, end
-    case 'legs'
-        for a = {'IC', 'RC'}, for nl = S.sweeps.legs
-            J = add(J, study, sprintf('%s_legs%d', a{1}, nl), [meas {'arch',a{1},'nlegs',nl}], sw);
         end, end
     case 'basiscmp32'
         % basis comparison FIGURE at the paper's settings (user, 2026-10-19): 32 x 16, both polarizations, exact
@@ -87,40 +76,6 @@ switch tok{2}
         for rt = [0.2 0.3 0.6 1.0]
             J = add(J, study, sprintf('IC_dft_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','dft','nlegs',0,'ratio',rt}], sw);   % round 7: equal effort (10 restarts) with IC VSH
         end
-    case 'basiscmp'
-        % basis comparison figure (user, 2026-10-19): the setup of the earlier work (one component, 64 x 32),
-        % identical readings and solver effort for every curve (10 restarts, 20 updates of 1000 iterations,
-        % target -50 dB), plain prior for both bases. Curves: IS Fourier, IS spherical-wave, IC Fourier with 8
-        % legs, IC spherical-wave without legs, all over the ratio grid; IC Fourier without legs at 3 ratios
-        % (it fails at all of them, and each failure runs every restart).
-        com = {'npol',1,'nw',64,'groupPrior','none','maxTry',10,'nitEM',20,'nitGAMP',1000,'solverSNRdB',48};
-        for rt = S.sweeps.ratio
-            J = add(J, study, sprintf('IS_dft_r%.2f', rt), [meas com {'arch','IS','angBasis','dft','ratio',rt}], sw);
-            J = add(J, study, sprintf('IS_vsh_r%.2f', rt), [meas com {'arch','IS','angBasis','vsh','ratio',rt}], sw);
-            J = add(J, study, sprintf('IC_dft_legs8_r%.2f', rt), [meas com {'arch','IC','angBasis','dft','nlegs',8,'ratio',rt}], sw);
-            J = add(J, study, sprintf('IC_vsh_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','vsh','nlegs',0,'ratio',rt}], sw);
-        end
-        for rt = [0.2 0.6 1.0]
-            J = add(J, study, sprintf('IC_dft_legs0_r%.2f', rt), [meas com {'arch','IC','angBasis','dft','nlegs',0,'ratio',rt}], sw);
-        end
-    case 'legsmatch32'
-        % basis comparison at the paper's resolution (32 x 16), one component (the DFT path is single-
-        % polarization), the paper's solver setting and the plain prior for BOTH bases; IC and RC with 0 and
-        % 8 legs at m/n 0.6, IS at 0.3 as a reference
-        for b = {'dft', 'vsh'}
-            com = {'angBasis', b{1}, 'npol', 1, 'nw', 32, 'groupPrior', 'none'};
-            for a = {'IC', 'RC'}, for nl = [0 8]
-                J = add(J, study, sprintf('%s_%s_legs%d', a{1}, b{1}, nl), [meas com {'arch',a{1},'nlegs',nl,'ratio',0.6}], sw);
-            end, end
-            J = add(J, study, sprintf('IS_%s', b{1}), [meas com {'arch','IS','ratio',0.3}], sw);
-        end
-    case 'legsdft'
-        % the 2D DFT basis of earlier versions (one component, 64 x 32 grid, the heavier circular
-        % solver settings): IC and RC without and with leg probes, at the earlier base ratio 0.6
-        dft = {'angBasis','dft','npol',1,'nw',64,'maxTry',30,'nitEM',20,'nitGAMP',1000,'solverSNRdB',48,'ratio',0.6};
-        for a = {'IC', 'RC'}, for nl = [0 8]
-            J = add(J, study, sprintf('%s_dft_legs%d', a{1}, nl), [meas dft {'arch',a{1},'nlegs',nl}], sw);
-        end, end
     case 'iters'
         % iteration budget (user, 2026-10-19): runs end on the iteration limit, not the residual target. IS and IC
         % at the base values with 4x the iterations: 4x the EM updates, or 4x the GAMP iterations per update
@@ -312,10 +267,6 @@ switch tok{2}
         for a = {'IS', 'IC'}, for cm = [0 50], for K = [1 4]
             J = add(J, study, sprintf('%s_cable%d_K%d', a{1}, cm, K), [meas {'arch',a{1},'cableMaxCm',cm,'K',K}], sw);
         end, end, end
-    case 'L'
-        for L = S.sweeps.L, J = add(J, study, sprintf('L%d', L), [meas {'vshL',L}], sw); end
-    case 'size'
-        for nw = S.sweeps.size, J = add(J, study, sprintf('nw%d', nw), [meas {'nw',nw}], sw); end
     case 'gauss'                              % same seeds: probes, tones and times match between the two
         for w = {'switch', 'gauss'}
             for rt = S.sweeps.gaussRatio
@@ -329,7 +280,7 @@ switch tok{2}
         J = add(J, study, 'IC_cal0', [meas cap {'arch','IC'}], sw);
         for e = S.sweeps.calErr.IC, J = add(J, study, sprintf('IC_cal%g', e), [meas cap {'arch','IC','calErrDeg',e}], sw); end
     case 'examples'
-        rl = S.sweeps.examples.pr; if isCs, rl = S.sweeps.examples.cs; end
+        rl = S.sweeps.examples.pr;
         for rt = rl
             J = add(J, study, sprintf('IS_ex_r%.2f', rt), [meas {'ratio',rt}], sw);
             J(end).saveXh = true;

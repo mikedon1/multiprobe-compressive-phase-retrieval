@@ -1,15 +1,15 @@
-function info = cpr_fwc_cuts(fGHz, thetaCut, phiCut)
-%CPR_FWC_CUTS  Section VII cut figures from the full-ring trials (fwc_run_trials -> fwc_trials.mat, 2026-10-21): free-space
+function info = cpr_fwc_cuts(fGHz, thetaCut, phiCut, trialsFile)
+%CPR_FWC_CUTS  Section VII cut figures from the full-ring trials (fwc_run_trials, run_fullwave): free-space
 %far field of the AUT, truth vs. the recovered coefficients of the WORST of the trials, with the pointwise error, in the
 %2x2 format of cpr_cut_panels (magnitude and phase on top, their errors below).
 %   cpr_fwc_cuts()                     2.725 GHz, azimuth cut at theta = 90 deg, elevation cut at phi = 0 deg
-%   cpr_fwc_cuts(fGHz, thetaCut, phiCut)
+%   cpr_fwc_cuts(fGHz, thetaCut, phiCut, trialsFile)
 % The recovered coefficients are aligned with one complex factor at that frequency (the main score of Section VII).
 % Far field: c = a .* j^(l+1) (TE) or j^l (TM) (fwc_aut_modes), E = sum c (A1 or A2) (vsh_eval). The plotted component is
 % the one with more energy along each cut (theta-hat or phi-hat). The elevation cut runs over the full great circle
 % through both poles (theta from 0 to 360 deg; beyond 180 deg it is the opposite half-plane, theta-hat reversed), so it
 % includes the polar caps that no probe measures.
-% Reads <results>/fwc_validation.mat and fwc_trials.mat; writes <results>/figs/paper/cutphi.pdf and cuttheta.pdf.
+% Reads data/fullwave/fwc_validation.mat (truth) and <results>/<trialsFile> (default fwc_trials_true_hfss_ring.mat); writes <results>/figs/paper/cutphi.pdf and cuttheta.pdf.
 if nargin < 1 || isempty(fGHz), fGHz = 2.725; end
 if nargin < 2 || isempty(thetaCut), thetaCut = 90; end
 if nargin < 3 || isempty(phiCut), phiCut = 0; end
@@ -18,7 +18,8 @@ if ~exist(pDir, 'dir'), mkdir(pDir); end
 vFile = fullfile(outDir, 'fwc_validation.mat');
 if ~exist(vFile, 'file'), vFile = fullfile(cpr_paths().data, 'fullwave', 'fwc_validation.mat'); end   % released data
 S = load(vFile); V = S.V;
-Tr = load(fullfile(outDir, 'fwc_trials.mat')); T = Tr.T;
+if nargin < 4 || isempty(trialsFile), trialsFile = 'fwc_trials_true_hfss_ring.mat'; end   % run_fullwave: the ten true-ring trials
+Tr = load(fullfile(outDir, trialsFile)); T = Tr.T;
 sc = arrayfun(@(t) t.nmse.perfreqScale, T); [~, iw] = max(sc); tr = T(iw);
 [~, k] = min(abs(V.freq - fGHz*1e9));
 modes = V.A.modes; L = max(modes(:, 1));
