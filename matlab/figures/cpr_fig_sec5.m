@@ -9,6 +9,7 @@ function cpr_fig_sec5(part)
 %                  several grid sizes (n_theta = n_phi/2).
 outDir = cpr_paths().results;
 pDir = fullfile(outDir, 'figs', 'paper');
+if ~exist(pDir, 'dir'), mkdir(pDir); end
 F = cpr_fig();
 if nargin < 1, part = 'all'; end
 if ~strcmp(part, 'accel')

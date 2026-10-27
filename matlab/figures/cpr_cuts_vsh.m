@@ -22,6 +22,8 @@ for d = dir(fullfile(outDir, 'pr_examples_w*.mat')).'
     for e = S0.res(:).', if ~isempty(e.Xh), E{end+1} = e; end, end %#ok<AGROW>
 end
 rt = cellfun(@(e) e.cfg.ratio, E);
+ratios = ratios(arrayfun(@(r) any(abs(rt - r) < 1e-9), ratios));   % the quick preset runs only the m/n = 0.30 example
+if isempty(ratios), ratios = sort(unique(rt)); ratios = ratios(1:min(2, numel(ratios))); end
 sel = arrayfun(@(r) find(abs(rt - r) < 1e-9, 1), ratios); E = E(sel);
 c = E{1}.cfg; [X, ~] = pattern_crlh_vsh(c.nw, c.nd, c.f0idx, 16, c.npol);
 nd = c.nd; nh = c.nh; nw = c.nw;

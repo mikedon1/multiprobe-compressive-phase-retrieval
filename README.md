@@ -64,7 +64,7 @@ that everything runs and to see the trends fast; its numbers do **not** match th
 
 ```
 matlab/core/              readings, sensing operator, spherical-wave and frequency bases, solver, self-calibration, scoring
-matlab/studies/           study definitions (cpr_jobs.m), loading, conjugate-ambiguity checks
+matlab/studies/           study definitions (cpr_jobs.m), loading
 matlab/fullwave/          Section VII: HFSS and moment-method data, embedded probe responses by reciprocity, full-wave trials
 matlab/nearfield/         Section VIII: spherical-wave expansion, near-field data, two-scan technique
 matlab/figures/           figure scripts
@@ -110,7 +110,7 @@ Section VII and Tables S5 and S6). It needs only the files in `data/` (below). O
   and near fields of the ring alone on spheres of 12 and 17 cm, one port at a time. `fwc_validate_hfss` rebuilds `fwc_validation.mat` from the
   arch files and `fwc_build_ring` rebuilds `fwc_ring_hfss.mat` from the ring files (to -150 dB of the stored files). The stored `fwc_ring_hfss.mat` is the double-precision data of the paper runs and reproduces them exactly. A rebuild from the single-precision packed files matches it to -150 dB, but the restart search of PR-GAMP can amplify such rounding, so individual trials can differ by about 1 dB (HFSS seed 1: -27.8 dB instead of -28.7 dB). Set the `CPR_HFSS`
   environment variable to read raw CSV/Touchstone exports instead.
-* The raw HFSS projects and exports are in the archive of the paper, not in this repository.
+* The original HFSS projects and the unpacked exports (CSV/Touchstone, about 1 GB) are not part of this repository. The packed files carry every value the code reads, to single-precision rounding (about -144 dB). The raw files are available from the author on request.
 
 ## License and citation
 

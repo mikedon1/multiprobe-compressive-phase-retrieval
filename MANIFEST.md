@@ -22,11 +22,11 @@ written to the folder set in `cpr_settings.m` (`resultsDir`, or the `CPR_RESULTS
 | Fig. S7, acquisition-time model | formula | `cpr_fig_sec5` → `ift_accel.pdf` |
 | Sec. VI-A, switches vs. Gaussian weights | `pr_gauss` | text |
 | Sec. VI-B, no sparsity prior | `pr_nosparse` | text |
-| Sec. IV, conjugate-ambiguity numbers | `cpr_conj_check`, `cpr_conj_check_k4` | printed |
+| Sec. IV and Table S4 text, conjugate candidate, span fractions, identifiability margins | `ident_margins`, `ident_spec`, `round7_checks` | printed (`matlab/diagnostics/`) |
 | Table S10, control studies | `pr_iters` (iteration budget), `pr_cables` (cable model), `pr_combiner`, `pr_pairs` (port sets), `pr_tonespan` and `pr_jitter` (tone window, jitter), `pr_trunc` and `pr_aut2` (truncation, larger antennas), `pr_caldrift`, `pr_calgain`, `pr_smooth` (smooth cable and gain errors, dispersion), `pr_scprior` (prior width), `pr_repeat` | supplement table, `cpr_load(<study>)` |
 | Table S11, finite detector response | `pr_detbw`; group-delay-aware scores: `detector_delay_scores(1)`, `detector_delay_scores(2)` | `matlab/analysis/` |
 | Table S12, rotation-phase margin from the amplitude Jacobian | `jac_rot_geometry` | `matlab/diagnostics/` |
-| Tables S3 and S4, sampling geometries, identifiability margins | `diag_geo`, `diag_geo2`, `diag_geo3`, `diag_t1c`, `ident_margins`, `ident_spec`, `round7_checks(part)` (parts 1 to 5), `grid_margin`, `pole_check` | `matlab/diagnostics/` (each script calls `setup` itself) |
+| Tables S3 and S4, sampling geometries, identifiability margins | `diag_geo`, `diag_geo2`, `diag_geo3`, `diag_t1c` | `matlab/diagnostics/` (each script calls `setup` itself) |
 | Sec. VII-A, model check of the HFSS ring | `fwc_build_ring` (ring calibration −29.24 dB, half-ring −28.12, free-field probes −26.25, opposite rotation sense −0.42) | printed, stored in `data/fullwave/fwc_ring_hfss.mat` (`Tr.check`) |
 | Sec. VII-B, ten trials and the m/n 0.6 and perturbed-calibration runs; Tables S5 and S6 | `run_fullwave` (`fwc_run_trials` with `'Ring','true'`, `'RingCal','ring'`, `'Polish',true`) | `summary_fullwave`, `fwc_numbers`, `fwc_joint_delay` in `matlab/analysis/` |
 | Sec. VIII, solve times of the two-scan runs | stored two-scan runs | `ts_times`, `cs_times` in `matlab/analysis/` |
@@ -46,5 +46,5 @@ All files are in `data/` (compressed MATLAB files, complex values in single prec
 | `fullwave/fwc_ring_hfss.mat` | transmissions of the true ring and the 64-port ring calibration (`Tr`, from `fwc_build_ring`) | `fwc_ring_data('hfss')` |
 | `fullwave/fwc_validation_mom.mat`, `fullwave/fwc_ring_mom.mat` | thin-wire method-of-moments data (arch and true ring): the accurate-data check | `fwc_ring_data('momval')`, `fwc_ring_data('mom')`; rebuilt with `mom_make_validation`, `mom_make_ring` |
 
-The raw HFSS projects and exports are in the archive of the paper (see `README.md`); the packed files carry everything the code reads.
+The original HFSS projects and unpacked exports are not included (available from the author on request); the packed files carry everything the code reads.
 The refinement of the Section VII estimates is `fwc_polish` (option `Polish` of `fwc_run_trials`; the paper uses it for Section VII only).

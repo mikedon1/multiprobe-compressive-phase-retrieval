@@ -4,7 +4,7 @@ function run_all(varargin)
 %   run_all                              everything with the 'paper' settings (takes days on a laptop)
 %   run_all('Preset', 'quick')           everything at reduced size (results go to results_quick/, and the
 %                                        numbers do NOT match the paper)
-%   run_all('Skip', {'nearfield', 'fullwave', 'checks'})   leave parts out
+%   run_all('Skip', {'nearfield', 'fullwave'})   leave parts out
 %
 % All settings are at the top of cpr_settings.m; the base values of the simulations are in core/cpr_cfg.m.
 % Everything is checkpointed, so an interrupted run resumes where it stopped. A single study can be run with
@@ -46,7 +46,6 @@ if ~ismember('nearfield', skip), run_nearfield(); end
 % true ring (65-port HFSS model): ten trials, m/n 0.6, perturbed calibration; moment-method ring; cut figures (cutphi, cuttheta); summary
 if ~ismember('fullwave', skip),  run_fullwave();  end
 
-% ---- Conjugate-ambiguity checks (Section IV-C numbers; studies/) ----
-if ~ismember('checks', skip),    cpr_conj_check(); cpr_conj_check_k4(); end
+% ---- Conjugate-ambiguity numbers: matlab/diagnostics/ident_margins.m and ident_spec.m (run separately, see MANIFEST.md) ----
 fprintf('run_all done. Figures: %s\n', fullfile(cpr_paths().results, 'figs', 'paper'));
 end
