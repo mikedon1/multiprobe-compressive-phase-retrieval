@@ -13,6 +13,8 @@ cosine basis across frequency. It also contains the full-wave example with HFSS-
 responses (Section VII), the comparison with the two-scan phaseless near-field technique (Section VIII),
 and the self-calibration of cable lengths.
 
+Archived release v1.0.0: [DOI 10.5281/zenodo.23716341](https://doi.org/10.5281/zenodo.23716341) (all versions: [10.5281/zenodo.23716340](https://doi.org/10.5281/zenodo.23716340)).
+
 ## Requirements
 
 * MATLAB (developed and tested with R2025b on Windows). **No toolbox is required**: everything, including GAMPmatlab, runs on base MATLAB (tested
