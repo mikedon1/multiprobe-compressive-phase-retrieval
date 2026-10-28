@@ -13,8 +13,6 @@ cosine basis across frequency. It also contains the full-wave example with HFSS-
 responses (Section VII), the comparison with the two-scan phaseless near-field technique (Section VIII),
 and the self-calibration of cable lengths.
 
-Archived release v1.0.0: [DOI 10.5281/zenodo.23716341](https://doi.org/10.5281/zenodo.23716341) (all versions: [10.5281/zenodo.23716340](https://doi.org/10.5281/zenodo.23716340)).
-
 ## Requirements
 
 * MATLAB (developed and tested with R2025b on Windows). **No toolbox is required**: everything, including GAMPmatlab, runs on base MATLAB (tested
@@ -100,20 +98,18 @@ Section VII and Tables S5 and S6). It needs only the files in `data/` (below). O
 * `data/crlh_far_field.mat`: far field of the CRLH leaky-wave antenna, simulated with openEMS
   (T. Liebig et al.) using the parameters of the openEMS CRLH leaky-wave antenna tutorial. Only the fields
   the code uses are kept (E_theta and E_phi at the first 32 frequencies, 1.90 to 3.45 GHz).
-* `data/fullwave/`, the processed full-wave data (Ansys HFSS-IE 2016.2, 16 frequencies from 2.375 to 3.125 GHz):
-  `fwc_validation.mat` (free-space mode coefficients of the AUT fitted to the AUT-alone solve, embedded receiving responses of the 32 probe
-  ports of the one-sided arch by reciprocity from the array-alone solve, solved transmissions of the 33-port arch model at 32 rotations),
-  `fwc_ring_hfss.mat` (solved AUT-to-probe transmissions of the true 65-port ring at 16 rotations, and the 64-port ring calibration from the
-  near fields of the ring alone), `fwc_validation_mom.mat` and `fwc_ring_mom.mat` (the same quantities from the thin-wire method of moments,
-  the accurate-data check). `ringalone_fullarc_map.csv` is the port map.
-* `data/hfss_fullarc/` (64 MB) and `data/hfss_fullring/` (65 MB): the HFSS exports behind these files, packed by `fwc_pack_hfss` and
-  `fwc_pack_ring` into compressed MATLAB files with single-precision values (rounding about -144 dB, far below the solver accuracy):
-  AUT-alone far field, S-parameters of the arch model (32 rotations) and of the ring alone, S-parameters of the true ring (16 rotations),
-  and near fields of the ring alone on spheres of 12 and 17 cm, one port at a time. `fwc_validate_hfss` rebuilds `fwc_validation.mat` from the
-  arch files and `fwc_build_ring` rebuilds `fwc_ring_hfss.mat` from the ring files (to -150 dB of the stored files). The stored `fwc_ring_hfss.mat` is the double-precision data of the paper runs and reproduces them exactly. A rebuild from the single-precision packed files matches it to -150 dB, but the restart search of PR-GAMP can amplify such rounding, so individual trials can differ by about 1 dB (HFSS seed 1: -27.8 dB instead of -28.7 dB). Set the `CPR_HFSS`
-  environment variable to read raw CSV/Touchstone exports instead.
-* The original HFSS projects and the unpacked exports (CSV/Touchstone, about 1 GB) are not part of this repository. The packed files carry every value the code reads, to single-precision rounding (about -144 dB). The raw files are available from the author on request.
-
+* `data/fullwave/`, the processed full-wave data (Ansys HFSS-IE 2016.2, 16 frequencies from 2.375 to 3.125 GHz). Every file is derived from
+  HFSS exports, with the processing described in the supplement and implemented in `matlab/fullwave/` (`fwc_validate_hfss`, `fwc_build_ring`):
+  * `fwc_validation.mat`: free-space mode coefficients of the AUT (a degree-12 spherical-wave fit to the AUT-alone far field, residual
+    -91.7 dB or better), embedded receiving responses of the 32 probe ports of the one-sided arch (spherical-wave fits to the near fields of the
+    array alone on spheres of 12 and 17 cm, converted by reciprocity), and the solved transmissions of the 33-port arch model.
+  * `fwc_ring_hfss.mat`: the solved AUT-to-probe transmissions of the true 65-port ring at 16 rotations (entries of the HFSS S-matrix,
+    unchanged) and the 64-port ring calibration (the same fit applied to the near fields of the ring alone), double precision; `Tr.check` holds the model check.
+  * `fwc_validation_mom.mat`, `fwc_ring_mom.mat`: the same quantities from the thin-wire method of moments (the accurate-data check).
+  * `hfss_aut.mat`: the angular grid of the HFSS far-field export (used by `mom_make_validation`); `ringalone_fullarc_map.csv`: port map.
+* The original HFSS projects and exports (CSV and Touchstone files, about 1 GB) are not part of the repository; they are available from the
+  author on request. `fwc_validate_hfss` (environment variable `CPR_HFSS`) and `fwc_build_ring` (`CPR_HFSS_RING`) rebuild the processed files from them.
+  `run_all` and `run_fullwave` use only the processed files.
 ## License and citation
 
 The code and data in this repository are released under the BSD 3-Clause Clear License (see `LICENSE`). The license grants no rights to any patents; the methods implemented here may be covered by patents of the author. GAMPmatlab is a

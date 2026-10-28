@@ -1,14 +1,16 @@
-function Tr = fwc_build_ring(outFile)
-%FWC_BUILD_RING  True-ring data of Section VII from the packed HFSS exports: the AUT-to-probe transmissions of the 65-port model (16 rotations)
+function Tr = fwc_build_ring(outFile, ringDir)
+%FWC_BUILD_RING  True-ring data of Section VII from the raw HFSS exports (not part of the repository): the AUT-to-probe transmissions of the 65-port model (16 rotations)
 %and the 64-port embedded-response calibration of the ring alone (from its near fields), with the model check of Section VII-A.
-%   Tr = fwc_build_ring            reads data/hfss_fullring (fwc_pack_ring) and data/fullwave/fwc_validation.mat; writes
-%                                  data/fullwave/fwc_ring_hfss.mat (double), which run_fullwave and fwc_ring_data use directly
+%   Tr = fwc_build_ring(outFile, ringDir)   reads the exports in ringDir (default: the folder named by the environment variable CPR_HFSS_RING:
+%                                  sweep_fullring_rot*.s65p, fullring_port_map.csv, ringalone_fullring_map.csv, ringalone_fullring_nf/) and data/fullwave/fwc_validation.mat;`r`n%                                  writes data/fullwave/fwc_ring_hfss.mat (double), which run_fullwave and fwc_ring_data use directly (it is shipped)
 % Tr.Xring, Tr.psi, Tr.freq as in fwc_ring_true; Tr.Rring 64 x nmode x nf (ring calibration); Tr.check lists the model error of the truth
 % (one complex factor per frequency) for the ring calibration, the opposite rotation sense, free-field probes and arch + symmetry.
 if nargin < 1 || isempty(outFile), outFile = fullfile(cpr_paths().data, 'fullwave', 'fwc_ring_hfss.mat'); end
 S0 = load(fullfile(cpr_paths().data, 'fullwave', 'fwc_validation.mat')); V = S0.V;
-Tr = fwc_ring_true(V);
-[Rring, info] = fwc_ring_calibration(V, fullfile(cpr_paths().data, 'hfss_fullring'));
+if nargin < 2 || isempty(ringDir), ringDir = getenv('CPR_HFSS_RING'); end
+if isempty(ringDir), error('fwc_build_ring: set CPR_HFSS_RING to the folder with the raw HFSS exports of the true ring (not part of the repository); the result is shipped as data/fullwave/fwc_ring_hfss.mat'); end
+Tr = fwc_ring_true(V, ringDir);
+[Rring, info] = fwc_ring_calibration(V, ringDir);
 Tr.Rring = Rring; Tr.info = info;
 modes = V.A.modes; sgn = reshape((-1) .^ modes(:, 2), 1, []); nf = size(Tr.Xring, 3); nr = size(Tr.Xring, 2); np2 = size(Tr.Xring, 1); nm = size(modes, 1);
 Rfree = fwc_free_resp(V); Rfree = [Rfree; Rfree .* sgn]; Rarch = [V.R; V.R .* sgn];

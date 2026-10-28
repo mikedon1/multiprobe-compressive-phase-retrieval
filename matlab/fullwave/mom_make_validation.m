@@ -27,7 +27,7 @@ end
 % ---- 2. AUT modes from the far field of the AUT-alone current ----
 wA = mom_ring_wires(0, struct('ring', 'none', 'aut', true, 'Maut', Ma));
 [~, ~, IA, iA] = mom_wire_sparams(wA, f);
-Pa = load(fullfile(cpr_paths().data, 'hfss_fullarc', 'hfss_aut.mat'));                      % grid of the HFSS far-field export
+Pa = load(fullfile(cpr_paths().data, 'fullwave', 'hfss_aut.mat'));                      % grid of the HFSS far-field export
 th = Pa.theta(:) * pi/180; ph = Pa.phi(:).' * pi/180; [TH, PH] = ndgrid(th, ph);
 rh = [sin(TH(:)).*cos(PH(:)), sin(TH(:)).*sin(PH(:)), cos(TH(:))]; tth = [cos(TH(:)).*cos(PH(:)), cos(TH(:)).*sin(PH(:)), -sin(TH(:))]; pph = [-sin(PH(:)), cos(PH(:)), zeros(numel(TH), 1)];
 [xq, wq] = gauleg(6); uq = (xq + 1)/2; wqt = wq/2;

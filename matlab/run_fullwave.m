@@ -6,7 +6,7 @@ function run_fullwave()
 %   - the half-ring calibration (arch response + 180-deg symmetry) on the same HFSS data, ten trials at m/n 0.3 and three at 0.6 (supplement)
 %   - the same on the moment-method ring (fwc_trials_true_momring_*): ring calibration and arch + symmetry calibration, m/n 0.3 and 0.6
 %   - cpr_fwc_cuts: worst trial, azimuth and elevation cuts at 2.725 GHz
-%Data (data/fullwave, built from data/hfss_fullring and data/hfss_fullarc; see README): fwc_ring_data('hfss'), fwc_ring_data('mom').
+%Data (data/fullwave, processed from the HFSS exports; see README): fwc_ring_data('hfss'), fwc_ring_data('mom').
 %Number of trials and the extra sets: cpr_settings (paper 10 and all sets; quick 1 trial of the HFSS ring and of the MoM ring, no extras). summary_fullwave prints the numbers of the paper from the saved results.
 cpr_setup();
 S = cpr_settings(); n = S.trials.fullwave; n3 = min(3, n);

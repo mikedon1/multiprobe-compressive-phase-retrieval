@@ -2,8 +2,7 @@ cff-version: 1.2.0
 message: "If you use this code or data, please cite the paper and this software."
 title: "Multi-Probe Compressive Phase Retrieval: Simulation Code and Data"
 type: software
-version: 1.0.0
-doi: 10.5281/zenodo.23716341
+version: 1.1.0
 date-released: '2026-10-27'
 authors:
   - family-names: Don

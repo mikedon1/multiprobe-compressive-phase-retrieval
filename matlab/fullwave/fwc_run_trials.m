@@ -17,7 +17,7 @@ p.addParameter('PerturbRelDb', -inf); % random complex error of every embedded-r
 p.addParameter('PerturbSeed', 1);
 p.addParameter('ProbeModel', 'embedded'); % 'embedded' (the paper) | 'free': ideal point probes, no coupling (fwc_free_resp)
 p.addParameter('OutTag', '');         % appended to the output file name (parallel workers on disjoint seeds; merge after)
-p.addParameter('RingDir', fullfile(cpr_paths().data, 'hfss_fullring'));   % 'true' ring: folder with sweep_fullring_rot*.s65p + fullring_port_map.csv
+p.addParameter('RingDir', '');   % 'true' ring without RingData: folder with the raw exports sweep_fullring_rot*.s65p + fullring_port_map.csv (not in the repository)
 p.addParameter('Ring', 'full');       % 'true' (2026-10-22): the TRUE full ring from the 65-port HFSS model (see RingDir);
                                       % 'full' (the paper, 2026-10-21): the arch at psi + 180 deg is the far half of a full
                                       %   ring at psi, so the 32 computed rotations form a 64-port ring at 16 rotations
@@ -32,7 +32,7 @@ over = struct2nv(p.Unmatched);
 V = p.Results.Validation;
 vFile = fullfile(cpr_paths().data, 'fullwave', 'fwc_validation.mat');   % processed HFSS data released with the code
 if isempty(V) && exist(vFile, 'file'), S = load(vFile); V = S.V; end
-if isempty(V), V = fwc_validate_hfss(); end                              % from the raw exports (data/hfss_fullarc)
+if isempty(V), error('fwc_run_trials: data/fullwave/fwc_validation.mat is missing (fwc_validate_hfss builds it from the raw HFSS exports)'); end
 D = struct('Xring', V.Smeas, 'R', V.R, 'modes', V.A.modes, 'psi', V.psi(:).' * pi/180, 'f', V.freq(:).', ...
     'aTrue', V.A.a, 'polish', p.Results.Polish);
 o = p.Results;

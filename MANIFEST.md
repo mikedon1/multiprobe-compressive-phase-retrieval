@@ -36,15 +36,14 @@ Seeds: every sweep point is one trial with seed 1 unless the study says otherwis
 
 ## Full-wave data (Section VII)
 
-All files are in `data/` (compressed MATLAB files, complex values in single precision where they come from raw exports).
+All files are in `data/fullwave/` (compressed MATLAB files). They are processed from HFSS-IE and method-of-moments data; the HFSS projects
+and unpacked exports are not included (available from the author on request).
 
 | File | Content | Used by |
 |---|---|---|
-| `hfss_fullarc/` (64 MB) | HFSS-IE exports of the 33-port model (AUT alone, 32 rotations, array alone, near fields), packed by `fwc_pack_hfss` | `fwc_validate_hfss` → `fullwave/fwc_validation.mat` |
-| `hfss_fullring/` (65 MB) | HFSS-IE exports of the TRUE 65-port ring (16 rotations over 180°; near fields of the ring alone on two spheres, one port at a time), packed by `fwc_pack_ring` | `fwc_ring_true`, `fwc_ring_calibration` → `fwc_build_ring` |
-| `fullwave/fwc_validation.mat` | free-space AUT mode coefficients, embedded responses of the 32 arch ports, solved transmissions of the arch model | `fwc_run_trials`, `cpr_fwc_cuts` |
-| `fullwave/fwc_ring_hfss.mat` | transmissions of the true ring and the 64-port ring calibration (`Tr`, from `fwc_build_ring`) | `fwc_ring_data('hfss')` |
-| `fullwave/fwc_validation_mom.mat`, `fullwave/fwc_ring_mom.mat` | thin-wire method-of-moments data (arch and true ring): the accurate-data check | `fwc_ring_data('momval')`, `fwc_ring_data('mom')`; rebuilt with `mom_make_validation`, `mom_make_ring` |
+| `fwc_validation.mat` | free-space AUT mode coefficients (degree-12 fit to the AUT-alone far field), embedded responses of the 32 arch ports (fits to the near fields of the array alone, by reciprocity), solved transmissions of the 33-port arch model | `fwc_run_trials`, `cpr_fwc_cuts`; rebuilt by `fwc_validate_hfss` (`CPR_HFSS`) |
+| `fwc_ring_hfss.mat` | transmissions of the true 65-port ring (16 rotations) and the 64-port ring calibration (`Tr`; `Tr.check` holds the model check) | `fwc_ring_data('hfss')`; rebuilt by `fwc_build_ring` (`CPR_HFSS_RING`) |
+| `fwc_validation_mom.mat`, `fwc_ring_mom.mat` | thin-wire method-of-moments data (arch and true ring): the accurate-data check | `fwc_ring_data('momval')`, `fwc_ring_data('mom')`; rebuilt with `mom_make_validation`, `mom_make_ring` |
+| `hfss_aut.mat`, `ringalone_fullarc_map.csv` | angular grid of the HFSS far-field export, port map | `mom_make_validation`, `fwc_validate_hfss` |
 
-The original HFSS projects and unpacked exports are not included (available from the author on request); the packed files carry everything the code reads.
 The refinement of the Section VII estimates is `fwc_polish` (option `Polish` of `fwc_run_trials`; the paper uses it for Section VII only).

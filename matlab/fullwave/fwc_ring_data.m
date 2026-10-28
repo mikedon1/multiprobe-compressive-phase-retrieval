@@ -1,7 +1,7 @@
 function Tr = fwc_ring_data(kind)
 %FWC_RING_DATA  Section VII data of the TRUE full ring, from the files released with the code.
 %   Tr = fwc_ring_data('hfss')   65-port HFSS ring: Xring, psi, freq and the ring calibration Rring (data/fullwave/fwc_ring_hfss.mat;
-%                                rebuilt from the packed exports by fwc_build_ring if the file is absent)
+%                                built from the raw HFSS exports by fwc_build_ring, which are not in the repository)
 %   Tr = fwc_ring_data('mom')    the same from the thin-wire method of moments (data/fullwave/fwc_ring_mom.mat, mom_make_ring); its
 %                                arch validation data (use as 'Validation') come from fwc_ring_data('momval')
 if nargin < 1, kind = 'hfss'; end
